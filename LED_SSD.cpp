@@ -2,11 +2,17 @@
 //                  
 //                          LED-SSD
 //                           
-//          Vista и младше, x32, x64, C++ 23, RU EN unicode             
+//          W7 и младше, x32, x64, C++ 23, RU EN unicode             
 //                          FPS 24,39 
 // "Вспомнить всё" = 30 лет паузы в проограммировании для Windows на C++
 //                  (C) Vinni, Апрель 2025 г.
 //
+
+#define WINVER _WIN32_WINNT_WIN7
+#define _WIN32_WINNT _WIN32_WINNT_WIN7
+#define NTDDI_VERSION NTDDI_WIN7
+#define WIN32_LEAN_AND_MEAN
+#define NOCOMM
 
 #include "resource.h"
 #include <windows.h>
@@ -15,6 +21,8 @@
 #include <string>
 
 #pragma comment(lib, "pdh.lib") // Работа со счётчиками
+
+
 
 #define hKey HKEY_CURRENT_USER
 
