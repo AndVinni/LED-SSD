@@ -20,6 +20,7 @@
 
 // GUID - уникальный идентификатор иконки
 class __declspec(uuid("8a002844-4745-4336-a9a1-98ff80bce4c2")) AppIcon;
+// GUID - уникальный идентификатор мьютекса
 const wchar_t *szwMutex = L"36д85б51e72д4504997ф28е0е243101с";
 const wchar_t *szWindowClass = L"LED-SSD";
 const wchar_t* szPause = L"Pause";
@@ -64,8 +65,8 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
     
     PdhOpenQuery(NULL, NULL, &hQueryR);
     PdhOpenQuery(NULL, NULL, &hQueryW);
-    PdhAddEnglishCounterW(hQueryR, readCounterPath, NULL, &hCounterRead);
-    PdhAddEnglishCounterW(hQueryW, writeCounterPath, NULL, &hCounterWrite);
+    PdhAddEnglishCounter(hQueryR, readCounterPath, NULL, &hCounterRead);
+    PdhAddEnglishCounter(hQueryW, writeCounterPath, NULL, &hCounterWrite);
             
     while (WaitForSingleObject(ghExitEvent, 0) != WAIT_OBJECT_0)
     {
@@ -132,7 +133,7 @@ APP CtrlAutoLoad(APP mode)
                 {   // Получаем полный путь к файлу
                     GetModuleFileName(NULL, szwPath, MAX_PATH);
                     if (wcscmp(szwKeyValue, szwPath) == 0)
-                    {   // Запись в реестре совпадает с текущим положением программы
+                    {   // Запись в реестре есть и совпадает с текущим положением программы
                         state = APP::LOAD;
                         break;
                     }
@@ -381,12 +382,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         if (!UserLocale_RU) // Если не русский, тогда английский
         {
             wchar_t szAutoload[85], szPause[85], szExit[85];
-            LoadStringW(hInstance, IDS_AUTOLOAD, szAutoload, ARRAYSIZE(szAutoload));
-            LoadStringW(hInstance, IDS_PAUSE, szPause, ARRAYSIZE(szPause));
-            LoadStringW(hInstance, IDS_EXIT, szExit, ARRAYSIZE(szExit));
-            ModifyMenuW(hMenu, IDM_AUTOLOAD, MF_STRING | MF_ENABLED, IDM_AUTOLOAD, szAutoload);
-            ModifyMenuW(hMenu, IDM_PAUSE, MF_STRING | MF_ENABLED, IDM_PAUSE, szPause);
-            ModifyMenuW(hMenu, IDM_EXIT, MF_STRING | MF_ENABLED, IDM_EXIT, szExit);
+            LoadString(hInstance, IDS_AUTOLOAD, szAutoload, ARRAYSIZE(szAutoload));
+            LoadString(hInstance, IDS_PAUSE, szPause, ARRAYSIZE(szPause));
+            LoadString(hInstance, IDS_EXIT, szExit, ARRAYSIZE(szExit));
+            ModifyMenu(hMenu, IDM_AUTOLOAD, MF_STRING | MF_ENABLED, IDM_AUTOLOAD, szAutoload);
+            ModifyMenu(hMenu, IDM_PAUSE, MF_STRING | MF_ENABLED, IDM_PAUSE, szPause);
+            ModifyMenu(hMenu, IDM_EXIT, MF_STRING | MF_ENABLED, IDM_EXIT, szExit);
             LoadString(hInstance, IDS_ACTE, nid.szTip, ARRAYSIZE(nid.szInfoTitle));
         }
 

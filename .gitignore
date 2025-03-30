@@ -1,5 +1,6 @@
 # Prerequisites
 *.d
+*.db
 *.png
 *.zip
 *.7z
