@@ -2,15 +2,15 @@
 //                  
 //                          LED-SSD
 //                           
-//          W7 и младше, x32, x64, C++ 23, RU EN unicode             
-//                          FPS 24,39 
+//          VISTA и младше, x32, x64, C++ 14, RU EN unicode             
+//                          
 // "Вспомнить всё" = 30 лет паузы в проограммировании для Windows на C++
 //                  (C) Vinni, Апрель 2025 г.
 //
 
-#define WINVER _WIN32_WINNT_WIN7
-#define _WIN32_WINNT _WIN32_WINNT_WIN7
-#define NTDDI_VERSION NTDDI_WIN7
+#define WINVER _WIN32_WINNT_VISTA
+#define _WIN32_WINNT _WIN32_WINNT_VISTA
+#define NTDDI_VERSION NTDDI_VISTA
 #define WIN32_LEAN_AND_MEAN
 #define NOCOMM
 
@@ -22,13 +22,11 @@
 
 #pragma comment(lib, "pdh.lib") // Работа со счётчиками
 
-
-
 #define hKey HKEY_CURRENT_USER
 
 // GUID - уникальный идентификатор иконки
 class __declspec(uuid("8a002844-4745-4336-a9a1-98ff80bce4c2")) AppIcon;
-// GUID - уникальный идентификатор мьютекса
+// Имя мьютекса
 const wchar_t *szwMutex = L"36д85б51e72д4504997ф28е0е243101с";
 const wchar_t *szWindowClass = L"LED-SSD";
 const wchar_t* szPause = L"Pause";
@@ -42,7 +40,7 @@ const wchar_t* szwUzheRabotaet = L"Программа уже запущена";
 const wchar_t* szwVnimanie = L"Внимание!";
 UINT const WMAPP_NOTIFYCALLBACK = WM_APP + 1;
 HICON hIconIdle, hIconRead, hIconWrite, hIconRW, hIconApp, hIconPause;
-NOTIFYICONDATA  nid = { sizeof(nid) };
+NOTIFYICONDATAW nid;
 HWND window = NULL;
 HMENU hMenu, hSubMenu = NULL;
 HANDLE monitorThread = NULL;
@@ -373,12 +371,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             SetPriorityClass(monitorThread, THREAD_PRIORITY_ABOVE_NORMAL);
 
         // Создание контекста для нотификации
+        nid.cbSize = sizeof(nid);
         nid.hWnd = window;
         nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_SHOWTIP | NIF_GUID;
         nid.hIcon = hIconApp;
         nid.guidItem = __uuidof(AppIcon);
-        nid.dwState = NIS_SHAREDICON;
-        nid.dwInfoFlags = NIIF_USER | NIIF_ICON_MASK;
+        nid.dwInfoFlags = NIIF_USER;
         nid.hBalloonIcon = hIconApp;
         nid.uCallbackMessage = WMAPP_NOTIFYCALLBACK;
         LoadString(hInstance, IDS_ACT, nid.szTip, ARRAYSIZE(nid.szInfoTitle));
