@@ -18,6 +18,7 @@
 #include <windows.h>
 #include <pdh.h>
 #include <shellapi.h>
+#include <wtsapi32.h>
 #include <string>
 
 #ifdef _DEBUG
@@ -25,8 +26,8 @@
     #include <iostream>
     import std;
 #endif
-#pragma comment(lib, "pdh.lib") // Работа со счётчиками
-
+#pragma comment(lib, "pdh.lib")         // Работа со счётчиками
+#pragma comment(lib, "Wtsapi32.lib" )   // Работа с сеансом
 
 #define hKey HKEY_CURRENT_USER
 
@@ -55,7 +56,7 @@ DWORD  dwThreadId = 0;
 enum class APP : short { CHECK, UNLOAD, LOAD };
 enum class THREAD : short { CHECK, PAUSE, RUN };
 APP CtrlAutoLoad(APP);
-THREAD CtrlPause(THREAD);
+THREAD CtrlThread(THREAD);
 bool UserLocale_RU; // Локализация или русская или английская
 void ShowContextMenu(HWND hwnd, POINT pt);
 
@@ -122,7 +123,7 @@ void ShowContextMenu(HWND hwnd, POINT pt)
 {
     if (hMenu)
     {
-        HMENU hSubMenu = GetSubMenu(hMenu, 0);
+        hSubMenu = GetSubMenu(hMenu, 0);
         if (hSubMenu)
         {
             // Окно на передний план, иначе контекстное меню не исчезнет
@@ -195,7 +196,7 @@ APP CtrlAutoLoad(APP mode)
     return state;
 }
 
-static THREAD CtrlPause(THREAD mode)
+static THREAD CtrlThread(THREAD mode)
 {   // Фиксация состояния паузы в реестре
 
     static THREAD state = THREAD::RUN;
@@ -274,17 +275,17 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
                     break;
 
                 case IDM_PAUSE:
-                    if (CtrlPause(THREAD::CHECK) == THREAD::RUN)
+                    if (CtrlThread(THREAD::CHECK) == THREAD::RUN)
                     {
                         SuspendThread(monitorThread);
-                        CtrlPause(THREAD::PAUSE);
+                        CtrlThread(THREAD::PAUSE);
                         CheckMenuItem(hMenu, IDM_PAUSE, MF_CHECKED);
                         UpdateTrayIcon(hIconPause);
                     }
                     else
                     {
                         ResumeThread(monitorThread);
-                        CtrlPause(THREAD::RUN);
+                        CtrlThread(THREAD::RUN);
                         CheckMenuItem(hMenu, IDM_PAUSE, MF_UNCHECKED);
                     }
                     break;
@@ -321,6 +322,21 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
             }
             break;
 
+        case WM_WTSSESSION_CHANGE:
+        {
+            switch (wParam)
+            {
+                case WTS_SESSION_LOCK:
+                    if (CtrlThread(THREAD::CHECK) == THREAD::RUN)
+                        SuspendThread(monitorThread);
+                    break;
+                case WTS_SESSION_UNLOCK:
+                        ResumeThread(monitorThread);
+                    break;
+            }
+        }
+        break;
+        
         case WM_DESTROY:
             ResumeThread(monitorThread);
             SetEvent(ghExitEvent);
@@ -392,8 +408,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         // Создание события завершения потока мониторинга
         ghExitEvent = CreateEvent(NULL, TRUE, FALSE, TEXT("ExitEvent"));
 
+        WTSRegisterSessionNotification(window, NOTIFY_FOR_THIS_SESSION);
+
         // Создание потока мониторинга
-        if (monitorThread = CreateThread(NULL, 0, MonitorDiskActivity, NULL, 0, &dwThreadId))
+        if (monitorThread = CreateThread(NULL, 65536, MonitorDiskActivity, NULL, 0, &dwThreadId))
             SetPriorityClass(monitorThread, THREAD_PRIORITY_ABOVE_NORMAL);
 
         // Создание контекста для нотификации
@@ -408,6 +426,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         nid.uCallbackMessage = WMAPP_NOTIFYCALLBACK;
         LoadString(hInstance, IDS_ACT, nid.szTip, ARRAYSIZE(nid.szInfoTitle));
         LoadString(hInstance, IDS_INFO, nid.szInfo, ARRAYSIZE(nid.szInfoTitle));
+        nid.hIcon = hIconRead;
+        nid.dwState = NIS_HIDDEN;
+        Shell_NotifyIcon(NIM_ADD, &nid);
+        nid.hIcon = hIconWrite;
+        Shell_NotifyIcon(NIM_ADD, &nid);
+        nid.hIcon = hIconRW;
+        Shell_NotifyIcon(NIM_ADD, &nid);
+        nid.hIcon = hIconIdle;
+        nid.dwState = NIS_SHAREDICON;
         Shell_NotifyIcon(NIM_ADD, &nid);
         nid.uVersion = NOTIFYICON_VERSION_4;
         Shell_NotifyIcon(NIM_SETVERSION, &nid);
@@ -431,7 +458,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             CheckMenuItem(hMenu, IDM_AUTOLOAD, MF_UNCHECKED);
 
         // Проверка состояния паузы
-        if (CtrlPause(THREAD::CHECK) == THREAD::PAUSE)
+        if (CtrlThread(THREAD::CHECK) == THREAD::PAUSE)
         {
             if (monitorThread)
             {
@@ -452,6 +479,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                 DispatchMessage(&msg);
             }
         }
+
+        WTSUnRegisterSessionNotification(window);
 
 #ifdef _DEBUG
     }
