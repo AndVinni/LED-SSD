@@ -2,15 +2,15 @@
 //                  
 //                          LED-SSD
 //                           
-//          VISTA и младше, x32, x64, C++ 14, RU EN unicode             
+//          WIN7 и младше, x32, x64, C++ 14, RU EN unicode             
 //                          
 // "Вспомнить всё" = 30 лет паузы в проограммировании для Windows на C++
 //                  (C) Vinni, Апрель 2025 г.
 //
 
-#define WINVER _WIN32_WINNT_VISTA
-#define _WIN32_WINNT _WIN32_WINNT_VISTA
-#define NTDDI_VERSION NTDDI_VISTA
+#define WINVER _WIN32_WINNT_WIN7
+#define _WIN32_WINNT _WIN32_WINNT_WIN7
+#define NTDDI_VERSION NTDDI_WIN7
 #define WIN32_LEAN_AND_MEAN
 #define NOCOMM
 
@@ -20,7 +20,13 @@
 #include <shellapi.h>
 #include <string>
 
+#ifdef _DEBUG
+    #include <fstream>
+    #include <iostream>
+    import std;
+#endif
 #pragma comment(lib, "pdh.lib") // Работа со счётчиками
+
 
 #define hKey HKEY_CURRENT_USER
 
@@ -40,7 +46,7 @@ const wchar_t* szwUzheRabotaet = L"Программа уже запущена";
 const wchar_t* szwVnimanie = L"Внимание!";
 UINT const WMAPP_NOTIFYCALLBACK = WM_APP + 1;
 HICON hIconIdle, hIconRead, hIconWrite, hIconRW, hIconApp, hIconPause;
-NOTIFYICONDATAW nid;
+NOTIFYICONDATAW nid ={ sizeof(nid) };
 HWND window = NULL;
 HMENU hMenu, hSubMenu = NULL;
 HANDLE monitorThread = NULL;
@@ -52,6 +58,22 @@ APP CtrlAutoLoad(APP);
 THREAD CtrlPause(THREAD);
 bool UserLocale_RU; // Локализация или русская или английская
 void ShowContextMenu(HWND hwnd, POINT pt);
+
+#ifdef _DEBUG
+    std::wstring nstr = L"";
+    void logMessage(const std::wstring& message, const std::wstring& par)
+    {
+        std::wofstream logFile("LED_SSD.log", std::ios_base::app); // Open log file in append mode
+        if (logFile.is_open())
+        {
+            logFile << message << par << std::endl; // Write message to log file
+            logFile.close();
+        }
+        else {
+            std::cerr << "Unable to open log file!" << std::endl; // Error handling
+        }
+    }
+#endif
 
 void inline static UpdateTrayIcon(HICON hIcon)
 {
@@ -319,14 +341,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_ LPWSTR    lpCmdLine,
     _In_ int       nCmdShow)
 {
+#ifdef _DEBUG
     try
     {
+#endif
+
         // Язык пользователя в системе
-        GetUserDefaultLocaleName(LocaleName, LOCALE_NAME_MAX_LENGTH);
-        UserLocale_RU = wcscmp(LocaleName, L"ru-RU") == 0 ? TRUE : FALSE;
+        if (GetUserDefaultLocaleName(LocaleName, LOCALE_NAME_MAX_LENGTH) != 0)
+            UserLocale_RU = wcscmp(LocaleName, L"ru-RU") == 0 ? TRUE : FALSE;
 
         // Блокировка запуска второго экземпляра программы
         HANDLE mutex = CreateMutexEx(0, szwMutex, CREATE_MUTEX_INITIAL_OWNER, READ_CONTROL);
+
         if (GetLastError() == ERROR_ALREADY_EXISTS)
         {
             if (UserLocale_RU)
@@ -367,16 +393,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         ghExitEvent = CreateEvent(NULL, TRUE, FALSE, TEXT("ExitEvent"));
 
         // Создание потока мониторинга
-        if (monitorThread = CreateThread(NULL, 65536, MonitorDiskActivity, NULL, 0, &dwThreadId))
+        if (monitorThread = CreateThread(NULL, 0, MonitorDiskActivity, NULL, 0, &dwThreadId))
             SetPriorityClass(monitorThread, THREAD_PRIORITY_ABOVE_NORMAL);
 
         // Создание контекста для нотификации
         nid.cbSize = sizeof(nid);
         nid.hWnd = window;
         nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_SHOWTIP | NIF_GUID;
-        nid.hIcon = hIconApp;
+        nid.hIcon = hIconIdle;
         nid.guidItem = __uuidof(AppIcon);
         nid.dwInfoFlags = NIIF_USER;
+        nid.dwState = NIS_SHAREDICON;
         nid.hBalloonIcon = hIconApp;
         nid.uCallbackMessage = WMAPP_NOTIFYCALLBACK;
         LoadString(hInstance, IDS_ACT, nid.szTip, ARRAYSIZE(nid.szInfoTitle));
@@ -419,18 +446,21 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         if (window)
         {   // Главный цикл сообщений:
             MSG msg;
-            while (GetMessage(&msg, NULL, 0, 0))
+            while (GetMessage(&msg, 0, 0, 0))
             {
                 TranslateMessage(&msg);
                 DispatchMessage(&msg);
             }
         }
+
+#ifdef _DEBUG
     }
     catch (...)
     {
         MessageBoxEx(NULL, L"Что-то пошло не так...", L"Исключение!", MB_OK, 0);
         return 1;
     }
+#endif
     return 0;
 }
 
