@@ -9,7 +9,7 @@
     <RemoteDebuggerDeployDebugCppRuntime>true</RemoteDebuggerDeployDebugCppRuntime>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <DebuggerFlavor>WindowsRemoteDebugger</DebuggerFlavor>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <RemoteDebuggerConnection>RemoteWithAuthentication</RemoteDebuggerConnection>
     <RemoteDebuggerAttach>true</RemoteDebuggerAttach>
     <RemoteDebuggerCommand>D:\Projects\Source\LED_SSD\Win32\Debug\LED_SSD.EXE</RemoteDebuggerCommand>

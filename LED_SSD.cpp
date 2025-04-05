@@ -52,6 +52,7 @@ HWND window = NULL;
 HMENU hMenu, hSubMenu = NULL;
 HANDLE monitorThread = NULL;
 HANDLE ghExitEvent = NULL;
+HANDLE hThis=NULL;
 DWORD  dwThreadId = 0;
 enum class APP : short { CHECK, UNLOAD, LOAD };
 enum class THREAD : short { CHECK, PAUSE, RUN };
@@ -279,6 +280,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
                     {
                         SuspendThread(monitorThread);
                         CtrlThread(THREAD::PAUSE);
+                        SetPriorityClass(hThis, THREAD_MODE_BACKGROUND_BEGIN);
                         CheckMenuItem(hMenu, IDM_PAUSE, MF_CHECKED);
                         UpdateTrayIcon(hIconPause);
                     }
@@ -286,6 +288,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
                     {
                         ResumeThread(monitorThread);
                         CtrlThread(THREAD::RUN);
+                        SetPriorityClass(hThis, THREAD_MODE_BACKGROUND_END);
                         CheckMenuItem(hMenu, IDM_PAUSE, MF_UNCHECKED);
                     }
                     break;
@@ -326,13 +329,20 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
         {
             switch (wParam)
             {
-                case WTS_SESSION_LOCK:
-                    if (CtrlThread(THREAD::CHECK) == THREAD::RUN)
-                        SuspendThread(monitorThread);
-                    break;
-                case WTS_SESSION_UNLOCK:
-                        ResumeThread(monitorThread);
-                    break;
+            case WTS_SESSION_LOCK:
+                if (CtrlThread(THREAD::CHECK) == THREAD::RUN)
+                {
+                    SuspendThread(monitorThread);
+                    SetPriorityClass(hThis, THREAD_MODE_BACKGROUND_BEGIN);
+                }
+                break;
+            case WTS_SESSION_UNLOCK:
+                if (CtrlThread(THREAD::CHECK) != THREAD::PAUSE)
+                {
+                    ResumeThread(monitorThread);
+                    SetPriorityClass(hThis, THREAD_MODE_BACKGROUND_END);
+                }
+                break;
             }
         }
         break;
@@ -361,6 +371,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     try
     {
 #endif
+        hThis = GetCurrentProcess(); // Ётот
 
         // язык пользовател€ в системе
         if (GetUserDefaultLocaleName(LocaleName, LOCALE_NAME_MAX_LENGTH) != 0)
@@ -412,7 +423,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
         // —оздание потока мониторинга
         if (monitorThread = CreateThread(NULL, 65536, MonitorDiskActivity, NULL, 0, &dwThreadId))
-            SetPriorityClass(monitorThread, THREAD_PRIORITY_ABOVE_NORMAL);
+            SetPriorityClass(monitorThread, THREAD_PRIORITY_ABOVE_NORMAL );
 
         // —оздание контекста дл€ нотификации
         nid.cbSize = sizeof(nid);
@@ -469,6 +480,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
         else
             CheckMenuItem(hMenu, IDM_PAUSE, MF_UNCHECKED);
+
 
         if (window)
         {   // √лавный цикл сообщений:
