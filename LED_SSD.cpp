@@ -37,6 +37,8 @@ class __declspec(uuid("8a002844-4745-4336-a9a1-98ff80bce4c2")) AppIcon;
 const wchar_t *szwMutex = L"36д85б51e72д4504997ф28е0е243101с";
 const wchar_t *szWindowClass = L"LED-SSD";
 const wchar_t* szPause = L"Pause";
+      wchar_t  szTip[128] = L"";
+      wchar_t  szTipP[128] = L"";
 const wchar_t* szwSelectedDisk = L"_Total";        // Активность всех дисков
 wchar_t readCounterPath[PDH_MAX_COUNTER_PATH];
 wchar_t writeCounterPath[PDH_MAX_COUNTER_PATH];
@@ -282,10 +284,12 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
                         CtrlThread(THREAD::PAUSE);
                         SetPriorityClass(hThis, THREAD_MODE_BACKGROUND_BEGIN);
                         CheckMenuItem(hMenu, IDM_PAUSE, MF_CHECKED);
+                        lstrcpy(nid.szTip, szTipP);
                         UpdateTrayIcon(hIconPause);
                     }
                     else
                     {
+                        lstrcpy(nid.szTip, szTip);
                         ResumeThread(monitorThread);
                         CtrlThread(THREAD::RUN);
                         SetPriorityClass(hThis, THREAD_MODE_BACKGROUND_END);
@@ -435,9 +439,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         nid.dwState = NIS_SHAREDICON;
         nid.hBalloonIcon = hIconApp;
         nid.uCallbackMessage = WMAPP_NOTIFYCALLBACK;
-        LoadString(hInstance, IDS_ACT, nid.szTip, ARRAYSIZE(nid.szInfoTitle));
-        LoadString(hInstance, IDS_INFO, nid.szInfo, ARRAYSIZE(nid.szInfoTitle));
-        nid.hIcon = hIconIdle;
+
+        LoadString(hInstance, IDS_ACT, szTip, ARRAYSIZE(szTip));
+        LoadString(hInstance, IDS_ACTP, szTipP, ARRAYSIZE(szTipP));
+        lstrcpy(nid.szTip, szTip);
+
+        LoadString(hInstance, IDS_ACT, nid.szInfoTitle, ARRAYSIZE(nid.szInfoTitle));
+        LoadString(hInstance, IDS_INFO, nid.szInfo, ARRAYSIZE(nid.szInfo));
+
         nid.dwState = NIS_HIDDEN | NIS_SHAREDICON;
         Shell_NotifyIcon(NIM_ADD, &nid);
         nid.dwState = NIS_HIDDEN;
@@ -455,11 +464,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             wchar_t szAutoload[85], szPause[85], szExit[85];
             LoadString(hInstance, IDS_AUTOLOAD, szAutoload, ARRAYSIZE(szAutoload));
             LoadString(hInstance, IDS_PAUSE, szPause, ARRAYSIZE(szPause));
+            LoadString(hInstance, IDS_ACTE, szTip, ARRAYSIZE(szTip));
+            LoadString(hInstance, IDS_ACTEP, szTipP, ARRAYSIZE(szTipP));
+            lstrcpy(nid.szTip, szTip);
             LoadString(hInstance, IDS_EXIT, szExit, ARRAYSIZE(szExit));
             ModifyMenu(hMenu, IDM_AUTOLOAD, MF_STRING | MF_ENABLED, IDM_AUTOLOAD, szAutoload);
             ModifyMenu(hMenu, IDM_PAUSE, MF_STRING | MF_ENABLED, IDM_PAUSE, szPause);
             ModifyMenu(hMenu, IDM_EXIT, MF_STRING | MF_ENABLED, IDM_EXIT, szExit);
             LoadString(hInstance, IDS_ACTE, nid.szTip, ARRAYSIZE(nid.szInfoTitle));
+            Shell_NotifyIcon(NIM_MODIFY, &nid);
         }
 
         // Проверка состояния автозагрузки
@@ -475,11 +488,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             {
                 SuspendThread(monitorThread);
                 CheckMenuItem(hMenu, IDM_PAUSE, MF_CHECKED);
+                lstrcpy(nid.szTip, szTipP);
                 UpdateTrayIcon(hIconPause);
+                
             }
         }
         else
+        {
+            lstrcpy(nid.szTip, szTip);
             CheckMenuItem(hMenu, IDM_PAUSE, MF_UNCHECKED);
+            
+        }
 
 
         if (window)

@@ -93,6 +93,7 @@
       <ImageHasSafeExceptionHandlers>
       </ImageHasSafeExceptionHandlers>
       <AdditionalLibraryDirectories>std.obj</AdditionalLibraryDirectories>
+      <ShowProgress>LinkVerbose</ShowProgress>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -107,6 +108,7 @@
       <SubSystem>Windows</SubSystem>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <AdditionalLibraryDirectories>std.obj</AdditionalLibraryDirectories>
+      <ShowProgress>LinkVerbose</ShowProgress>
     </Link>
     <ResourceCompile />
   </ItemDefinitionGroup>
@@ -128,7 +130,6 @@
       <Version>
       </Version>
       <AssemblyDebug>false</AssemblyDebug>
-      <ShowProgress>LinkVerbose</ShowProgress>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -149,7 +150,6 @@
       <Version>
       </Version>
       <AssemblyDebug>false</AssemblyDebug>
-      <ShowProgress>LinkVerbose</ShowProgress>
     </Link>
     <ResourceCompile />
   </ItemDefinitionGroup>
