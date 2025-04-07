@@ -36,7 +36,7 @@ class __declspec(uuid("8a002844-4745-4336-a9a1-98ff80bce4c2")) AppIcon;
 // Имя мьютекса
 const wchar_t *szwMutex = L"36д85б51e72д4504997ф28е0е243101с";
 const wchar_t *szWindowClass = L"LED-SSD";
-const wchar_t* szPause = L"Pause";
+const wchar_t *szPause = L"Pause";
       wchar_t  szTip[128] = L"";
       wchar_t  szTipP[128] = L"";
 const wchar_t* szwSelectedDisk = L"_Total";        // Активность всех дисков
@@ -58,8 +58,8 @@ HANDLE hThis=NULL;
 DWORD  dwThreadId = 0;
 enum class APP : short { CHECK, UNLOAD, LOAD };
 enum class THREAD : short { CHECK, PAUSE, RUN };
-APP CtrlAutoLoad(APP);
-THREAD CtrlThread(THREAD);
+static APP CtrlAutoLoad(APP);
+static THREAD CtrlThread(THREAD);
 bool UserLocale_RU; // Локализация или русская или английская
 void ShowContextMenu(HWND hwnd, POINT pt);
 
@@ -142,7 +142,7 @@ void ShowContextMenu(HWND hwnd, POINT pt)
     }
 }
 
-APP CtrlAutoLoad(APP mode)  
+static APP CtrlAutoLoad(APP mode)  
 {   // Управление автозагрузкой через реестр
 
     static APP state = APP::UNLOAD;
@@ -423,31 +423,31 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         // Создание события завершения потока мониторинга
         ghExitEvent = CreateEvent(NULL, TRUE, FALSE, TEXT("ExitEvent"));
 
+        // Регистрируем окно, для получения сообщений сессии
         WTSRegisterSessionNotification(window, NOTIFY_FOR_THIS_SESSION);
 
         // Создание потока мониторинга
-        if (monitorThread = CreateThread(NULL, 65536, MonitorDiskActivity, NULL, 0, &dwThreadId))
+        if ((monitorThread = CreateThread(NULL, 65536, MonitorDiskActivity, NULL, 0, &dwThreadId)))
             SetPriorityClass(monitorThread, THREAD_PRIORITY_ABOVE_NORMAL );
 
         // Создание контекста для нотификации
         nid.cbSize = sizeof(nid);
         nid.hWnd = window;
         nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_SHOWTIP | NIF_GUID;
-        nid.hIcon = hIconIdle;
         nid.guidItem = __uuidof(AppIcon);
         nid.dwInfoFlags = NIIF_USER;
         nid.dwState = NIS_SHAREDICON;
         nid.hBalloonIcon = hIconApp;
         nid.uCallbackMessage = WMAPP_NOTIFYCALLBACK;
-
+        // Тексты нотификации
         LoadString(hInstance, IDS_ACT, szTip, ARRAYSIZE(szTip));
         LoadString(hInstance, IDS_ACTP, szTipP, ARRAYSIZE(szTipP));
         lstrcpy(nid.szTip, szTip);
-
         LoadString(hInstance, IDS_ACT, nid.szInfoTitle, ARRAYSIZE(nid.szInfoTitle));
         LoadString(hInstance, IDS_INFO, nid.szInfo, ARRAYSIZE(nid.szInfo));
-
-        nid.dwState = NIS_HIDDEN | NIS_SHAREDICON;
+        // Иконки анимации
+        nid.dwState = NIS_SHAREDICON;
+        nid.hIcon = hIconIdle;
         Shell_NotifyIcon(NIM_ADD, &nid);
         nid.dwState = NIS_HIDDEN;
         nid.hIcon = hIconWrite;
@@ -456,22 +456,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         Shell_NotifyIcon(NIM_ADD, &nid);
         nid.hIcon = hIconRead;
         Shell_NotifyIcon(NIM_ADD, &nid);
+        // Версия нотификации
         nid.uVersion = NOTIFYICON_VERSION_4;
         Shell_NotifyIcon(NIM_SETVERSION, &nid);
 
         if (!UserLocale_RU) // Если не русский, тогда английский
         {
-            wchar_t szAutoload[85], szPause[85], szExit[85];
-            LoadString(hInstance, IDS_AUTOLOAD, szAutoload, ARRAYSIZE(szAutoload));
-            LoadString(hInstance, IDS_PAUSE, szPause, ARRAYSIZE(szPause));
+            wchar_t szAutoloadMenu[85], szPauseMenu[85], szExitMenu[85];
+            LoadString(hInstance, IDS_AUTOLOAD, szAutoloadMenu, ARRAYSIZE(szAutoloadMenu));
+            LoadString(hInstance, IDS_PAUSE, szPauseMenu, ARRAYSIZE(szPauseMenu));
+            LoadString(hInstance, IDS_EXIT, szExitMenu, ARRAYSIZE(szExitMenu));
             LoadString(hInstance, IDS_ACTE, szTip, ARRAYSIZE(szTip));
             LoadString(hInstance, IDS_ACTEP, szTipP, ARRAYSIZE(szTipP));
-            lstrcpy(nid.szTip, szTip);
-            LoadString(hInstance, IDS_EXIT, szExit, ARRAYSIZE(szExit));
-            ModifyMenu(hMenu, IDM_AUTOLOAD, MF_STRING | MF_ENABLED, IDM_AUTOLOAD, szAutoload);
-            ModifyMenu(hMenu, IDM_PAUSE, MF_STRING | MF_ENABLED, IDM_PAUSE, szPause);
-            ModifyMenu(hMenu, IDM_EXIT, MF_STRING | MF_ENABLED, IDM_EXIT, szExit);
-            LoadString(hInstance, IDS_ACTE, nid.szTip, ARRAYSIZE(nid.szInfoTitle));
+            LoadString(hInstance, IDS_INFOE, nid.szInfo, ARRAYSIZE(nid.szInfo));
+            LoadString(hInstance, IDS_ACTE, nid.szInfoTitle, ARRAYSIZE(nid.szInfoTitle));
+            ModifyMenu(hMenu, IDM_AUTOLOAD, MF_STRING | MF_ENABLED, IDM_AUTOLOAD, szAutoloadMenu);
+            ModifyMenu(hMenu, IDM_PAUSE, MF_STRING | MF_ENABLED, IDM_PAUSE, szPauseMenu);
+            ModifyMenu(hMenu, IDM_EXIT, MF_STRING | MF_ENABLED, IDM_EXIT, szExitMenu);
             Shell_NotifyIcon(NIM_MODIFY, &nid);
         }
 
