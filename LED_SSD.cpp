@@ -8,10 +8,12 @@
 //                  (C) Vinni, Апрель 2025 г.
 //
 
+//https://chatgpt.com/share/67f58dc1-9378-8001-ada7-08f38eedde20
+
 #define WINVER _WIN32_WINNT_WIN7
 #define _WIN32_WINNT _WIN32_WINNT_WIN7
 #define NTDDI_VERSION NTDDI_WIN7
-#define WIN32_LEAN_AND_MEAN
+//#define WIN32_LEAN_AND_MEAN
 #define NOCOMM
 
 #include "resource.h"
@@ -20,6 +22,10 @@
 #include <shellapi.h>
 #include <wtsapi32.h>
 #include <string>
+#include <gdiplus.h>
+using namespace Gdiplus;
+ULONG_PTR gdiplusToken;
+
 
 #ifdef _DEBUG
     #include <fstream>
@@ -28,6 +34,7 @@
 #endif
 #pragma comment(lib, "pdh.lib")         // Работа со счётчиками
 #pragma comment(lib, "Wtsapi32.lib" )   // Работа с сеансом
+#pragma comment(lib, "gdiplus.lib")     // Модификация иконки в трее
 
 #define hKey HKEY_CURRENT_USER
 
@@ -79,6 +86,70 @@ void ShowContextMenu(HWND hwnd, POINT pt);
     }
 #endif
 
+static inline void InitGDIPlus()
+{
+    GdiplusStartupInput gdiplusStartupInput;
+    GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+}
+
+static inline void ShutdownGDIPlus()
+{
+    GdiplusShutdown(gdiplusToken);
+}
+
+static inline float scale_05_1(float data ) 
+{
+    float tmp = (data / 500000000.0) + 0.75;
+    return tmp > 1. ? 1 : tmp;
+}
+
+static inline float  remove_dc(float  x, float  alpha) // ToDo надо делать class
+{
+    static float  y_prev;  // предыдущее выходное значение
+    static float  x_prev;  // предыдущее входное значение
+
+    float  y = x - x_prev + alpha * y_prev;
+
+    x_prev = x;
+    y_prev = y;
+
+    return y;
+}
+
+static HICON AdjustIconBrightnessGDIPlus(HICON hIcon, float brightnessFactor) // ToDo надо делать class
+ {
+        Bitmap bmp(hIcon); // Преобразуем HICON в Bitmap
+        static Bitmap result(bmp.GetWidth(), bmp.GetHeight(), PixelFormat32bppARGB); // Пустая
+
+        Graphics g(&result); // Художник
+
+        // Матрица яркости
+        float b = brightnessFactor; // Диапазон 0.5-1
+        ColorMatrix cm =
+        {
+            b, 0, 0, 0, 0,
+            0, b, 0, 0, 0,
+            0, 0, b, 0, 0,
+            0, 0, 0, 1, 0,
+            0, 0, 0, 0, 1
+        };
+
+        ImageAttributes ia;
+        ia.SetColorMatrix(&cm, ColorMatrixFlagsDefault, ColorAdjustTypeBitmap);
+
+        g.DrawImage(&bmp,
+            Rect(0, 0, bmp.GetWidth(), bmp.GetHeight()),
+            0, 0, bmp.GetWidth(), bmp.GetHeight(),
+            UnitPixel, &ia);
+
+        static HICON newIcon; // Неверно, возвращение переменной на стеке!
+        result.GetHICON(&newIcon);
+        return newIcon;
+    }
+
+
+
+
 void inline static UpdateTrayIcon(HICON hIcon)
 {
     nid.hIcon = hIcon;
@@ -91,6 +162,7 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
     PDH_HQUERY hQueryR, hQueryW;
     PDH_HCOUNTER hCounterRead, hCounterWrite;
     PDH_FMT_COUNTERVALUE valueRead, valueWrite;
+    float BritesFactorR=0, BritesFactorW=0, BritesFactorRW;
 
     swprintf_s(readCounterPath, L"%s%s%s", L"\\PhysicalDisk(", szwSelectedDisk, L")\\Disk Read Bytes/sec");
     swprintf_s(writeCounterPath, L"%s%s%s", L"\\PhysicalDisk(", szwSelectedDisk, L")\\Disk Write Bytes/sec");
@@ -108,7 +180,11 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
         PdhGetFormattedCounterValue(hCounterWrite, PDH_FMT_LONG, NULL, &valueWrite);
 
         if (valueRead.longValue > 0 && valueWrite.longValue > 0)    // Читает и пишет
-            UpdateTrayIcon(hIconRW);
+        {
+            long meanValue = (valueRead.longValue + valueWrite.longValue) / 2;
+            BritesFactorRW = scale_05_1(abs(remove_dc(meanValue, 0.995)));
+            UpdateTrayIcon(AdjustIconBrightnessGDIPlus(hIconRW, BritesFactorRW));
+        }
         else if (valueRead.longValue > 0)                           // Только читает
             UpdateTrayIcon(hIconRead);
         else if (valueWrite.longValue > 0)                          // Только пишет
@@ -456,6 +532,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         Shell_NotifyIcon(NIM_ADD, &nid);
         nid.hIcon = hIconRead;
         Shell_NotifyIcon(NIM_ADD, &nid);
+        nid.hIcon = hIconPause;
+        Shell_NotifyIcon(NIM_ADD, &nid);
         // Версия нотификации
         nid.uVersion = NOTIFYICON_VERSION_4;
         Shell_NotifyIcon(NIM_SETVERSION, &nid);
@@ -469,7 +547,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             LoadString(hInstance, IDS_ACTE, szTip, ARRAYSIZE(szTip));
             LoadString(hInstance, IDS_ACTEP, szTipP, ARRAYSIZE(szTipP));
             LoadString(hInstance, IDS_INFOE, nid.szInfo, ARRAYSIZE(nid.szInfo));
-            LoadString(hInstance, IDS_ACTE, nid.szInfoTitle, ARRAYSIZE(nid.szInfoTitle));
+            LoadString(hInstance, IDS_APP_DECR_E, nid.szInfoTitle, ARRAYSIZE(nid.szInfoTitle));
             ModifyMenu(hMenu, IDM_AUTOLOAD, MF_STRING | MF_ENABLED, IDM_AUTOLOAD, szAutoloadMenu);
             ModifyMenu(hMenu, IDM_PAUSE, MF_STRING | MF_ENABLED, IDM_PAUSE, szPauseMenu);
             ModifyMenu(hMenu, IDM_EXIT, MF_STRING | MF_ENABLED, IDM_EXIT, szExitMenu);
@@ -501,6 +579,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             
         }
 
+        InitGDIPlus();
 
         if (window)
         {   // Главный цикл сообщений:
@@ -512,6 +591,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             }
         }
 
+        ShutdownGDIPlus();
         WTSUnRegisterSessionNotification(window);
 
 #ifdef _DEBUG

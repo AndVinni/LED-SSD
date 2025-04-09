@@ -18,6 +18,8 @@
 #define IDS_ACTP                        115
 #define IDS_ACTEP                       116
 #define IDS_INFOE                       117
+#define IDS_STRING118                   118
+#define IDS_APP_DECR_E                  118
 #define IDM_EXIT                        124
 #define IDM_PAUSE                       125
 #define IDM_AUTOLOAD                    126
