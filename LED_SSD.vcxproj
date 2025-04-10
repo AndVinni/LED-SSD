@@ -88,6 +88,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <CallingConvention>FastCall</CallingConvention>
       <Optimization>Disabled</Optimization>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -105,6 +106,7 @@
       <BuildStlModules>true</BuildStlModules>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <Optimization>Disabled</Optimization>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -124,6 +126,8 @@
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <CallingConvention>FastCall</CallingConvention>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
@@ -144,6 +148,8 @@
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>

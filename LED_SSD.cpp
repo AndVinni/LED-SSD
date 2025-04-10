@@ -25,6 +25,7 @@
 #include <gdiplus.h>
 using namespace Gdiplus;
 ULONG_PTR gdiplusToken;
+#include <optional>
 
 
 #ifdef _DEBUG
@@ -97,31 +98,25 @@ static inline void ShutdownGDIPlus()
     GdiplusShutdown(gdiplusToken);
 }
 
-static inline float scale_05_1(float data ) 
+
+class IconArtist
 {
-    float tmp = (data / 500000000.0) + 0.75;
-    return tmp > 1. ? 1 : tmp;
-}
+    std::optional<Bitmap> bmp;
+    std::optional<Bitmap> result;
+    std::optional<HICON> newIcon;
 
-static inline float  remove_dc(float  x, float  alpha) // ToDo надо делать class
-{
-    static float  y_prev;  // предыдущее выходное значение
-    static float  x_prev;  // предыдущее входное значение
+public:
 
-    float  y = x - x_prev + alpha * y_prev;
+    HICON AdjustIconBrightnessGDIPlus(HICON hIcon, float brightnessFactor);
+};
 
-    x_prev = x;
-    y_prev = y;
 
-    return y;
-}
-
-static HICON AdjustIconBrightnessGDIPlus(HICON hIcon, float brightnessFactor) // ToDo надо делать class
+HICON IconArtist::AdjustIconBrightnessGDIPlus(HICON hIcon, float brightnessFactor) // ToDo надо делать class
  {
-        Bitmap bmp(hIcon); // Преобразуем HICON в Bitmap
-        static Bitmap result(bmp.GetWidth(), bmp.GetHeight(), PixelFormat32bppARGB); // Пустая
-
-        Graphics g(&result); // Художник
+        bmp.emplace(hIcon); // Преобразуем HICON в Bitmap;
+        result.emplace(bmp->GetWidth(), bmp->GetHeight(), PixelFormat32bppARGB); // Пустая
+       
+        Graphics g(&*result); // Художник
 
         // Матрица яркости
         float b = brightnessFactor; // Диапазон 0.5-1
@@ -137,18 +132,38 @@ static HICON AdjustIconBrightnessGDIPlus(HICON hIcon, float brightnessFactor) //
         ImageAttributes ia;
         ia.SetColorMatrix(&cm, ColorMatrixFlagsDefault, ColorAdjustTypeBitmap);
 
-        g.DrawImage(&bmp,
-            Rect(0, 0, bmp.GetWidth(), bmp.GetHeight()),
-            0, 0, bmp.GetWidth(), bmp.GetHeight(),
+        g.DrawImage(&*bmp,
+            Rect(0, 0, bmp->GetWidth(), bmp->GetHeight()),
+            0, 0, bmp->GetWidth(), bmp->GetHeight(),
             UnitPixel, &ia);
 
-        static HICON newIcon; // Неверно, возвращение переменной на стеке!
-        result.GetHICON(&newIcon);
-        return newIcon;
+        result->GetHICON(&newIcon.emplace());
+        return *newIcon;
     }
 
+class Normalisator
+{
+    float  y_prev;  // предыдущее выходное значение
+    float  x_prev;  // предыдущее входное значение
+    float  mean; 
+public:
 
+    Normalisator() { y_prev = 0; x_prev = 0; mean = 0.5; }
+    inline float  remove_dc_and_scale(float  x, float  alpha);
+    operator float() { return mean;  }
+};
 
+inline float  Normalisator::remove_dc_and_scale(float  x, float  alpha)
+{
+    float  y = abs(x) - x_prev + alpha * y_prev;
+
+    x_prev = x;
+    y_prev = y;
+
+    mean = (20 * log10(x_prev / y_prev)) / 100. + 0.5;
+    mean = mean > 1. ? 1. : mean;
+    return mean;
+}
 
 void inline static UpdateTrayIcon(HICON hIcon)
 {
@@ -159,10 +174,11 @@ void inline static UpdateTrayIcon(HICON hIcon)
 static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
 {   // Мониторинг активности дисков через счётчики производительности системы
 
+    static Normalisator BritesFactorR, BritesFactorW, BritesFactorRW;
+    static IconArtist ArtistR, ArtistW, ArtistRW;
     PDH_HQUERY hQueryR, hQueryW;
     PDH_HCOUNTER hCounterRead, hCounterWrite;
     PDH_FMT_COUNTERVALUE valueRead, valueWrite;
-    float BritesFactorR=0, BritesFactorW=0, BritesFactorRW;
 
     swprintf_s(readCounterPath, L"%s%s%s", L"\\PhysicalDisk(", szwSelectedDisk, L")\\Disk Read Bytes/sec");
     swprintf_s(writeCounterPath, L"%s%s%s", L"\\PhysicalDisk(", szwSelectedDisk, L")\\Disk Write Bytes/sec");
@@ -181,14 +197,22 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
 
         if (valueRead.longValue > 0 && valueWrite.longValue > 0)    // Читает и пишет
         {
-            long meanValue = (valueRead.longValue + valueWrite.longValue) / 2;
-            BritesFactorRW = scale_05_1(abs(remove_dc(meanValue, 0.995)));
-            UpdateTrayIcon(AdjustIconBrightnessGDIPlus(hIconRW, BritesFactorRW));
+            long meanValueRW = (valueRead.longValue + valueWrite.longValue) / 2;
+            BritesFactorRW.remove_dc_and_scale(meanValueRW, 0.995);
+            UpdateTrayIcon(ArtistRW.AdjustIconBrightnessGDIPlus(hIconRW, BritesFactorRW));
         }
         else if (valueRead.longValue > 0)                           // Только читает
-            UpdateTrayIcon(hIconRead);
+        {
+            long meanValueR = (valueRead.longValue);
+            BritesFactorR.remove_dc_and_scale(meanValueR, 0.995);
+            UpdateTrayIcon(ArtistR.AdjustIconBrightnessGDIPlus(hIconRead, BritesFactorR));
+        }
         else if (valueWrite.longValue > 0)                          // Только пишет
-            UpdateTrayIcon(hIconWrite);
+        {
+            long meanValueW = (valueWrite.longValue);
+            BritesFactorW.remove_dc_and_scale(meanValueW, 0.995);
+            UpdateTrayIcon(ArtistW.AdjustIconBrightnessGDIPlus(hIconWrite, BritesFactorW));
+        }
         else                                                        // Курит
             UpdateTrayIcon(hIconIdle);
         Sleep(41);                                                  
@@ -468,7 +492,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                 MessageBoxEx(NULL, szwAllRun, szwWarning, MB_OK, 0);
             return 1;
         }
-
+        // ToDo Другая версия анимации идл иконка + иконка вспышки с регулировкой яркости
         // Загрузка иконок из ресурсов
         hIconIdle = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_IDLE));
         hIconRead = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_READ));
