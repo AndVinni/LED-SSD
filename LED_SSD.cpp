@@ -99,7 +99,7 @@ static inline void ShutdownGDIPlus()
 }
 
 
-class IconArtist
+class IconBright
 {
     std::optional<Bitmap> bmp;
     std::optional<Bitmap> result;
@@ -107,11 +107,11 @@ class IconArtist
 
 public:
 
-    HICON AdjustIconBrightnessGDIPlus(HICON hIcon, float brightnessFactor);
+    HICON AdjustIconBrightness(HICON hIcon, float brightnessFactor);
 };
 
 
-HICON IconArtist::AdjustIconBrightnessGDIPlus(HICON hIcon, float brightnessFactor) // ToDo надо делать class
+HICON IconBright::AdjustIconBrightness(HICON hIcon, float brightnessFactor) // ToDo надо делать class
  {
         bmp.emplace(hIcon); // Преобразуем HICON в Bitmap;
         result.emplace(bmp->GetWidth(), bmp->GetHeight(), PixelFormat32bppARGB); // Пустая
@@ -119,7 +119,7 @@ HICON IconArtist::AdjustIconBrightnessGDIPlus(HICON hIcon, float brightnessFacto
         Graphics g(&*result); // Художник
 
         // Матрица яркости
-        float b = brightnessFactor; // Диапазон 0.5-1
+        float b = brightnessFactor; // Диапазон 0.5-1.5 проверен на глаз
         ColorMatrix cm =
         {
             b, 0, 0, 0, 0,
@@ -143,26 +143,30 @@ HICON IconArtist::AdjustIconBrightnessGDIPlus(HICON hIcon, float brightnessFacto
 
 class Normalisator
 {
-    float  y_prev;  // предыдущее выходное значение
     float  x_prev;  // предыдущее входное значение
-    float  mean; 
+    float  x_log;   // предыдущее входное значение в лог. формате
+    float  y_log;   // предыдущее выходное значение в лог. формате
+    float  kBright; // Вычесленный коэф. яркости
 public:
 
-    Normalisator() { y_prev = 0; x_prev = 0; mean = 0.5; }
+    Normalisator() { x_prev = x_log = y_log = 0; kBright = 1; }
     inline float  remove_dc_and_scale(float  x, float  alpha);
-    operator float() { return mean;  }
+    operator float() { return kBright;  }
 };
 
 inline float  Normalisator::remove_dc_and_scale(float  x, float  alpha)
 {
-    float  y = abs(x) - x_prev + alpha * y_prev;
+    float tmp_x = abs(x);
+    float x_tmp = 20 * abs(log10((x_prev / tmp_x +0.0001)));
+    
+    float  y = (abs(x_tmp - x_log) + alpha * y_log)/50.;
+    y += 0.5;
+    x_prev = tmp_x;
+    x_log = x_tmp;
+    y_log = y;
 
-    x_prev = x;
-    y_prev = y;
-
-    mean = (20 * log10(x_prev / y_prev)) / 100. + 0.5;
-    mean = mean > 1. ? 1. : mean;
-    return mean;
+    kBright = y > 1.5 ? 1.5 : y;
+    return kBright;
 }
 
 void inline static UpdateTrayIcon(HICON hIcon)
@@ -174,8 +178,8 @@ void inline static UpdateTrayIcon(HICON hIcon)
 static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
 {   // Мониторинг активности дисков через счётчики производительности системы
 
-    static Normalisator BritesFactorR, BritesFactorW, BritesFactorRW;
-    static IconArtist ArtistR, ArtistW, ArtistRW;
+    Normalisator levelR, levelW, levelRW;
+    IconBright Green, Red, Yellow;
     PDH_HQUERY hQueryR, hQueryW;
     PDH_HCOUNTER hCounterRead, hCounterWrite;
     PDH_FMT_COUNTERVALUE valueRead, valueWrite;
@@ -198,20 +202,20 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
         if (valueRead.longValue > 0 && valueWrite.longValue > 0)    // Читает и пишет
         {
             long meanValueRW = (valueRead.longValue + valueWrite.longValue) / 2;
-            BritesFactorRW.remove_dc_and_scale(meanValueRW, 0.995);
-            UpdateTrayIcon(ArtistRW.AdjustIconBrightnessGDIPlus(hIconRW, BritesFactorRW));
+            levelRW.remove_dc_and_scale(meanValueRW, 0.995);
+            UpdateTrayIcon(Yellow.AdjustIconBrightness(hIconRW, levelRW));
         }
         else if (valueRead.longValue > 0)                           // Только читает
         {
             long meanValueR = (valueRead.longValue);
-            BritesFactorR.remove_dc_and_scale(meanValueR, 0.995);
-            UpdateTrayIcon(ArtistR.AdjustIconBrightnessGDIPlus(hIconRead, BritesFactorR));
+            levelR.remove_dc_and_scale(meanValueR, 0.995);
+            UpdateTrayIcon(Green.AdjustIconBrightness(hIconRead, levelR));
         }
         else if (valueWrite.longValue > 0)                          // Только пишет
         {
             long meanValueW = (valueWrite.longValue);
-            BritesFactorW.remove_dc_and_scale(meanValueW, 0.995);
-            UpdateTrayIcon(ArtistW.AdjustIconBrightnessGDIPlus(hIconWrite, BritesFactorW));
+            levelW.remove_dc_and_scale(meanValueW, 0.995);
+            UpdateTrayIcon(Red.AdjustIconBrightness(hIconWrite, levelW));
         }
         else                                                        // Курит
             UpdateTrayIcon(hIconIdle);
@@ -492,7 +496,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                 MessageBoxEx(NULL, szwAllRun, szwWarning, MB_OK, 0);
             return 1;
         }
-        // ToDo Другая версия анимации идл иконка + иконка вспышки с регулировкой яркости
+
         // Загрузка иконок из ресурсов
         hIconIdle = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_IDLE));
         hIconRead = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_READ));
