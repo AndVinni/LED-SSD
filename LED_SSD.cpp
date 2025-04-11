@@ -24,7 +24,6 @@
 #include <string>
 #include <gdiplus.h>
 using namespace Gdiplus;
-ULONG_PTR gdiplusToken;
 #include <optional>
 
 
@@ -39,6 +38,7 @@ ULONG_PTR gdiplusToken;
 
 #define hKey HKEY_CURRENT_USER
 
+ULONG_PTR gdiplusToken;
 // GUID - уникальный идентификатор иконки
 class __declspec(uuid("8a002844-4745-4336-a9a1-98ff80bce4c2")) AppIcon;
 // Имя мьютекса
@@ -56,7 +56,8 @@ const wchar_t* szwWarning = L"Warning!";
 const wchar_t* szwUzheRabotaet = L"Программа уже запущена";
 const wchar_t* szwVnimanie = L"Внимание!";
 UINT const WMAPP_NOTIFYCALLBACK = WM_APP + 1;
-HICON hIconIdle, hIconRead, hIconWrite, hIconRW, hIconApp, hIconPause;
+HICON hIconIdle, hIconApp, hIconPause, hIconRead, hIconWrite, hIconRW;
+std::optional<HICON> pIconRead, pIconWrite, pIconRW;
 NOTIFYICONDATAW nid ={ sizeof(nid) };
 HWND window = NULL;
 HMENU hMenu, hSubMenu = NULL;
@@ -103,15 +104,18 @@ class IconBright
 {
     std::optional<Bitmap> bmp;
     std::optional<Bitmap> result;
-    std::optional<HICON> newIcon;
+    //std::optional<HICON> newIcon;
 
 public:
 
-    HICON AdjustIconBrightness(HICON hIcon, float brightnessFactor);
+    IconBright(HICON hIcon) { bmp.emplace(hIcon);
+                              result.emplace(bmp->GetWidth(), bmp->GetHeight(), PixelFormat32bppARGB);
+                            } 
+    bool AdjustIconBrightness(HICON hIcon, HICON *dstIcon, float brightnessFactor);
 };
 
 
-HICON IconBright::AdjustIconBrightness(HICON hIcon, float brightnessFactor) // ToDo надо делать class
+bool IconBright::AdjustIconBrightness(HICON hIcon, HICON* dstIcon, float brightnessFactor)
  {
         bmp.emplace(hIcon); // Преобразуем HICON в Bitmap;
         result.emplace(bmp->GetWidth(), bmp->GetHeight(), PixelFormat32bppARGB); // Пустая
@@ -137,8 +141,8 @@ HICON IconBright::AdjustIconBrightness(HICON hIcon, float brightnessFactor) // T
             0, 0, bmp->GetWidth(), bmp->GetHeight(),
             UnitPixel, &ia);
 
-        result->GetHICON(&newIcon.emplace());
-        return *newIcon;
+        result->GetHICON(dstIcon);
+        return true;
     }
 
 class Normalisator
@@ -156,12 +160,12 @@ public:
 
 inline float  Normalisator::remove_dc_and_scale(float  x, float  alpha)
 {
-    float tmp_x = abs(x);
-    float x_tmp = 20 * abs(log10((x_prev / tmp_x +0.0001)));
+    float src_x = abs(x);
+    float x_tmp = 20 * abs(log10((x_prev / src_x +0.0001)));
     
     float  y = (abs(x_tmp - x_log) + alpha * y_log)/50.;
     y += 0.5;
-    x_prev = tmp_x;
+    x_prev = src_x;
     x_log = x_tmp;
     y_log = y;
 
@@ -178,8 +182,8 @@ void inline static UpdateTrayIcon(HICON hIcon)
 static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
 {   // Мониторинг активности дисков через счётчики производительности системы
 
-    Normalisator levelR, levelW, levelRW;
-    IconBright Green, Red, Yellow;
+    static Normalisator levelR, levelW, levelRW;
+    static IconBright Green(hIconRead), Red(hIconWrite), Yellow(hIconRW);
     PDH_HQUERY hQueryR, hQueryW;
     PDH_HCOUNTER hCounterRead, hCounterWrite;
     PDH_FMT_COUNTERVALUE valueRead, valueWrite;
@@ -203,19 +207,22 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
         {
             long meanValueRW = (valueRead.longValue + valueWrite.longValue) / 2;
             levelRW.remove_dc_and_scale(meanValueRW, 0.995);
-            UpdateTrayIcon(Yellow.AdjustIconBrightness(hIconRW, levelRW));
+            Yellow.AdjustIconBrightness(hIconRW, &*pIconRW, levelRW);
+            UpdateTrayIcon(*pIconRW);
         }
         else if (valueRead.longValue > 0)                           // Только читает
         {
             long meanValueR = (valueRead.longValue);
             levelR.remove_dc_and_scale(meanValueR, 0.995);
-            UpdateTrayIcon(Green.AdjustIconBrightness(hIconRead, levelR));
+            Green.AdjustIconBrightness(hIconRead, &*pIconRead, levelR);
+            UpdateTrayIcon(*pIconRead);
         }
         else if (valueWrite.longValue > 0)                          // Только пишет
         {
             long meanValueW = (valueWrite.longValue);
             levelW.remove_dc_and_scale(meanValueW, 0.995);
-            UpdateTrayIcon(Red.AdjustIconBrightness(hIconWrite, levelW));
+            Red.AdjustIconBrightness(hIconWrite, &*pIconWrite, levelW);
+            UpdateTrayIcon(*pIconWrite);
         }
         else                                                        // Курит
             UpdateTrayIcon(hIconIdle);
@@ -498,12 +505,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
 
         // Загрузка иконок из ресурсов
+        hIconApp = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APP));
         hIconIdle = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_IDLE));
+        hIconPause = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PAUSE));
         hIconRead = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_READ));
         hIconWrite = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WRITE));
         hIconRW = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RW));
-        hIconApp = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APP));
-        hIconPause = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PAUSE));
+
+        pIconRead.emplace(hIconRead);
+        pIconWrite.emplace(hIconWrite);
+        pIconRW.emplace(hIconRW);
 
         // Регистрация класса окна
         WNDCLASSEXW wcex = { sizeof(wcex) };
@@ -554,15 +565,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         nid.hIcon = hIconIdle;
         Shell_NotifyIcon(NIM_ADD, &nid);
         nid.dwState = NIS_HIDDEN;
-        nid.hIcon = hIconWrite;
-        Shell_NotifyIcon(NIM_ADD, &nid);
-        nid.hIcon = hIconRW;
-        Shell_NotifyIcon(NIM_ADD, &nid);
-        nid.hIcon = hIconRead;
-        Shell_NotifyIcon(NIM_ADD, &nid);
         nid.hIcon = hIconPause;
         Shell_NotifyIcon(NIM_ADD, &nid);
-        // Версия нотификации
+        nid.hIcon = *pIconRead;
+        Shell_NotifyIcon(NIM_ADD, &nid);
+        nid.hIcon = *pIconWrite;
+        Shell_NotifyIcon(NIM_ADD, &nid);
+        nid.hIcon = *pIconRW;
+        Shell_NotifyIcon(NIM_ADD, &nid);
+                // Версия нотификации
         nid.uVersion = NOTIFYICON_VERSION_4;
         Shell_NotifyIcon(NIM_SETVERSION, &nid);
 
