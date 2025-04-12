@@ -25,6 +25,8 @@
 #include <gdiplus.h>
 using namespace Gdiplus;
 #include <optional>
+#include <cmath>
+
 
 
 #ifdef _DEBUG
@@ -104,7 +106,6 @@ class IconBright
 {
     std::optional<Bitmap> bmp;
     std::optional<Bitmap> result;
-    //std::optional<HICON> newIcon;
 
 public:
 
@@ -145,33 +146,88 @@ bool IconBright::AdjustIconBrightness(HICON hIcon, HICON* dstIcon, float brightn
         return true;
     }
 
-class Normalisator
+class Normalizator
 {
-    float  x_prev;  // предыдущее входное значение
-    float  x_log;   // предыдущее входное значение в лог. формате
-    float  y_log;   // предыдущее выходное значение в лог. формате
-    float  kBright; // Вычесленный коэф. яркости
 public:
+    Normalizator()
+        : x_prev(0.0f), y_prev(0.0f),
+        input_min(0.0f), input_max(10.0f),
+        output_min(0.75f), output_max(1.2f),
+        log_scaled(0.0f),
+        k(5.0f)
+    {
+    }
 
-    Normalisator() { x_prev = x_log = y_log = 0; kBright = 1; }
-    inline float  remove_dc_and_scale(float  x, float  alpha);
-    operator float() { return kBright;  }
+    // Основная функция: удаление DC + линейное масштабирование + логарифм
+    inline float Preparation(float value, float alpha)
+    {
+        float gb = value / 1073741824.; // gb/sec
+        float scaled = scale_linear(gb);
+        float no_dc = remove_dc(no_dc, alpha);
+        log_scaled = scale_logarithmic(scaled);
+        return log_scaled;
+    }
+
+    operator float() { return log_scaled; }
+
+private:
+    // Состояния фильтра
+    float x_prev;
+    float y_prev;
+
+    // Диапазоны масштабирования
+    float input_min;
+    float input_max;
+    float output_min;
+    float output_max;
+    float log_scaled;
+
+    // Коэффициент логарифмического масштабирования
+    float k;
+
+    // Линейное масштабирование из [-X, X] в [0.75, 1.2]
+    inline float scale_linear(float value)
+    {
+        float normalized = (value - input_min) / (input_max - input_min);
+        return output_min + normalized * (output_max - output_min);
+    }
+
+    // Удаление постоянной составляющей
+    inline float remove_dc(float x, float alpha)
+    {
+        float y = x - x_prev + alpha * y_prev;
+        x_prev = x;
+        y_prev = y;
+        return y;
+    }
+
+    // Логарифмическое масштабирование в диапазоне [ output_min, output_max]
+    inline float scale_logarithmic(float value)
+    {
+        if (value <= output_min) return output_min;
+        if (value >= output_max) return output_max;
+
+        float normalized_input = value - output_min;
+        float input_range = output_max - output_min;
+
+        float numerator = std::log1p(k * normalized_input);
+        float denominator = std::log1p(k * input_range);
+
+        float factor = numerator / denominator;
+        return output_min + factor * (output_max - output_min);
+    }
+    /*
+    inline float scale_logarithmic(float value)
+    {
+        const float reference = output_min; // то есть 0.5
+
+        if (value <= 0.0f) return -100.0f; // защита от логарифма 0 или отрицательных значений
+
+        return 20.0f * std::log10(value / reference);
+    }*/
 };
 
-inline float  Normalisator::remove_dc_and_scale(float  x, float  alpha)
-{
-    float src_x = abs(x);
-    float x_tmp = 20 * abs(log10((x_prev / src_x +0.0001)));
-    
-    float  y = (abs(x_tmp - x_log) + alpha * y_log)/50.;
-    y += 0.5;
-    x_prev = src_x;
-    x_log = x_tmp;
-    y_log = y;
 
-    kBright = y > 1.5 ? 1.5 : y;
-    return kBright;
-}
 
 void inline static UpdateTrayIcon(HICON hIcon)
 {
@@ -182,7 +238,7 @@ void inline static UpdateTrayIcon(HICON hIcon)
 static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
 {   // Мониторинг активности дисков через счётчики производительности системы
 
-    static Normalisator levelR, levelW, levelRW;
+    static Normalizator levelR, levelW, levelRW;
     static IconBright Green(hIconRead), Red(hIconWrite), Yellow(hIconRW);
     PDH_HQUERY hQueryR, hQueryW;
     PDH_HCOUNTER hCounterRead, hCounterWrite;
@@ -200,27 +256,27 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
     {
         PdhCollectQueryData(hQueryR);
         PdhCollectQueryData(hQueryW);
-        PdhGetFormattedCounterValue(hCounterRead, PDH_FMT_LONG, NULL, &valueRead);
-        PdhGetFormattedCounterValue(hCounterWrite, PDH_FMT_LONG, NULL, &valueWrite);
+        PdhGetFormattedCounterValue(hCounterRead, PDH_FMT_DOUBLE, NULL, &valueRead);
+        PdhGetFormattedCounterValue(hCounterWrite, PDH_FMT_DOUBLE, NULL, &valueWrite);
 
-        if (valueRead.longValue > 0 && valueWrite.longValue > 0)    // Читает и пишет
+        if (valueRead.largeValue > 0ll && valueWrite.largeValue > 0ll)    // Читает и пишет
         {
-            long meanValueRW = (valueRead.longValue + valueWrite.longValue) / 2;
-            levelRW.remove_dc_and_scale(meanValueRW, 0.995);
+            float meanValueRW = (valueRead.largeValue + valueWrite.doubleValue) / 2;
+            levelRW.Preparation(meanValueRW, 0.001);
             Yellow.AdjustIconBrightness(hIconRW, &*pIconRW, levelRW);
             UpdateTrayIcon(*pIconRW);
         }
-        else if (valueRead.longValue > 0)                           // Только читает
+        else if (valueRead.largeValue > 0ll)                           // Только читает
         {
-            long meanValueR = (valueRead.longValue);
-            levelR.remove_dc_and_scale(meanValueR, 0.995);
+            float meanValueR = (valueRead.doubleValue);
+            levelR.Preparation(meanValueR, 0.001);
             Green.AdjustIconBrightness(hIconRead, &*pIconRead, levelR);
             UpdateTrayIcon(*pIconRead);
         }
-        else if (valueWrite.longValue > 0)                          // Только пишет
+        else if (valueWrite.largeValue > 0ll)                          // Только пишет
         {
-            long meanValueW = (valueWrite.longValue);
-            levelW.remove_dc_and_scale(meanValueW, 0.995);
+            float meanValueW = (valueWrite.doubleValue);
+            levelW.Preparation(meanValueW, 0.001);
             Red.AdjustIconBrightness(hIconWrite, &*pIconWrite, levelW);
             UpdateTrayIcon(*pIconWrite);
         }
@@ -560,20 +616,21 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         lstrcpy(nid.szTip, szTip);
         LoadString(hInstance, IDS_ACT, nid.szInfoTitle, ARRAYSIZE(nid.szInfoTitle));
         LoadString(hInstance, IDS_INFO, nid.szInfo, ARRAYSIZE(nid.szInfo));
-        // Иконки анимации
+        // Постоянные иконки анимации
         nid.dwState = NIS_SHAREDICON;
         nid.hIcon = hIconIdle;
         Shell_NotifyIcon(NIM_ADD, &nid);
         nid.dwState = NIS_HIDDEN;
         nid.hIcon = hIconPause;
         Shell_NotifyIcon(NIM_ADD, &nid);
+        // Изменяемые иконки анимации
         nid.hIcon = *pIconRead;
         Shell_NotifyIcon(NIM_ADD, &nid);
         nid.hIcon = *pIconWrite;
         Shell_NotifyIcon(NIM_ADD, &nid);
         nid.hIcon = *pIconRW;
         Shell_NotifyIcon(NIM_ADD, &nid);
-                // Версия нотификации
+        // Версия нотификации
         nid.uVersion = NOTIFYICON_VERSION_4;
         Shell_NotifyIcon(NIM_SETVERSION, &nid);
 
