@@ -58,8 +58,15 @@ const wchar_t* szwWarning = L"Warning!";
 const wchar_t* szwUzheRabotaet = L"Программа уже запущена";
 const wchar_t* szwVnimanie = L"Внимание!";
 UINT const WMAPP_NOTIFYCALLBACK = WM_APP + 1;
-HICON hIconIdle, hIconApp, hIconPause, hIconRead, hIconWrite, hIconRW;
-std::optional<HICON> pIconRead, pIconWrite, pIconRW;
+HICON hIconIdle, hIconApp, hIconPause,  hIconReadD, hIconRead, hIconReadB, 
+                                        hIconWriteD, hIconWrite, hIconWriteB, 
+                                        hIconRWd, hIconRW, hIconRWb ;
+
+const float MIN_AC_RANGE = -10.f;
+const float MAX_AC_RANGE = 10.f;
+const float MIN_OUT_RANGE = 0.0f;
+const float MAX_OUT_RANGE = 10.f;
+
 NOTIFYICONDATAW nid ={ sizeof(nid) };
 HWND window = NULL;
 HMENU hMenu, hSubMenu = NULL;
@@ -104,55 +111,48 @@ static inline void ShutdownGDIPlus()
 
 class IconBright
 {
-    std::optional<Bitmap> bmp;
-    std::optional<Bitmap> result;
+    HICON hID;
+    HICON hIN;
+    HICON hIB;
+    float rmin;
+    float rmax;
 
 public:
 
-    IconBright(HICON hIcon) { bmp.emplace(hIcon);
-                              result.emplace(bmp->GetWidth(), bmp->GetHeight(), PixelFormat32bppARGB);
-                            } 
-    bool AdjustIconBrightness(HICON hIcon, HICON *dstIcon, float brightnessFactor);
+    IconBright(HICON hIconD, HICON hIconN, HICON hIconB) : rmin(MIN_AC_RANGE), rmax(MAX_AC_RANGE)
+    {
+        hID = hIconD;
+        hIN = hIconN;
+        hIB = hIconB;
+    }
+
+    HICON IconSelector(float brightnessFactor);
 };
 
 
-bool IconBright::AdjustIconBrightness(HICON hIcon, HICON* dstIcon, float brightnessFactor)
- {
-        bmp.emplace(hIcon); // Преобразуем HICON в Bitmap;
-        result.emplace(bmp->GetWidth(), bmp->GetHeight(), PixelFormat32bppARGB); // Пустая
-       
-        Graphics g(&*result); // Художник
+HICON IconBright::IconSelector(float brightnessFactor)
+{
+    if (brightnessFactor < rmin)  return hID;
+    if (brightnessFactor > rmax)  return hIB;
 
-        // Матрица яркости
-        float b = brightnessFactor; // Диапазон 0.5-1.5 проверен на глаз
-        ColorMatrix cm =
-        {
-            b, 0, 0, 0, 0,
-            0, b, 0, 0, 0,
-            0, 0, b, 0, 0,
-            0, 0, 0, 1, 0,
-            0, 0, 0, 0, 1
-        };
+    float darkRange = rmin / 5;
+    float brightRange = rmax / 4;
 
-        ImageAttributes ia;
-        ia.SetColorMatrix(&cm, ColorMatrixFlagsDefault, ColorAdjustTypeBitmap);
-
-        g.DrawImage(&*bmp,
-            Rect(0, 0, bmp->GetWidth(), bmp->GetHeight()),
-            0, 0, bmp->GetWidth(), bmp->GetHeight(),
-            UnitPixel, &ia);
-
-        result->GetHICON(dstIcon);
-        return true;
-    }
+    if (brightnessFactor >= rmin && brightnessFactor < darkRange )
+        return hID;
+    if (brightnessFactor >= darkRange && brightnessFactor < brightRange )
+        return hIN;
+    if (brightnessFactor >= brightRange && brightnessFactor <= rmax)
+        return hIB;
+}
 
 class Normalizator
 {
 public:
     Normalizator()
         : x_prev(0.0f), y_prev(0.0f),
-        input_min(0.0f), input_max(10.0f),
-        output_min(0.75f), output_max(1.2f),
+        input_min(MIN_AC_RANGE), input_max(MAX_AC_RANGE),
+        output_min(MIN_OUT_RANGE), output_max(MAX_OUT_RANGE),
         log_scaled(0.0f),
         k(5.0f)
     {
@@ -161,11 +161,11 @@ public:
     // Основная функция: удаление DC + линейное масштабирование + логарифм
     inline float Preparation(float value, float alpha)
     {
-        float gb = value / 1073741824.; // gb/sec
-        float scaled = scale_linear(gb);
-        float no_dc = remove_dc(no_dc, alpha);
-        log_scaled = scale_logarithmic(scaled);
-        return log_scaled;
+        float gb = value < 0.0f ? 0.0f : value / 1073741824.0f; // gb/sec
+        float no_dc = remove_dc(gb, alpha);
+        //float scaled = scale_linear(no_dc);
+        //log_scaled = scale_logarithmic(scaled);
+        return no_dc;
     }
 
     operator float() { return log_scaled; }
@@ -185,12 +185,6 @@ private:
     // Коэффициент логарифмического масштабирования
     float k;
 
-    // Линейное масштабирование из [-X, X] в [0.75, 1.2]
-    inline float scale_linear(float value)
-    {
-        float normalized = (value - input_min) / (input_max - input_min);
-        return output_min + normalized * (output_max - output_min);
-    }
 
     // Удаление постоянной составляющей
     inline float remove_dc(float x, float alpha)
@@ -199,6 +193,15 @@ private:
         x_prev = x;
         y_prev = y;
         return y;
+    }
+
+    // Линейное масштабирование из [MIN_AC_RANGE, MAX_AC_RANGE] в [MIN_OUT_RANGE, MAX_OUT_RANGE]
+    inline float scale_linear(float value)
+    {   
+        // Нормализация в [0..1]
+        float normalized = (value - input_min) / (input_max - input_min);
+        // Масштабирование в [0..10]
+        return output_min + normalized * (output_max - output_min);
     }
 
     // Логарифмическое масштабирование в диапазоне [ output_min, output_max]
@@ -216,15 +219,6 @@ private:
         float factor = numerator / denominator;
         return output_min + factor * (output_max - output_min);
     }
-    /*
-    inline float scale_logarithmic(float value)
-    {
-        const float reference = output_min; // то есть 0.5
-
-        if (value <= 0.0f) return -100.0f; // защита от логарифма 0 или отрицательных значений
-
-        return 20.0f * std::log10(value / reference);
-    }*/
 };
 
 
@@ -239,7 +233,9 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
 {   // Мониторинг активности дисков через счётчики производительности системы
 
     static Normalizator levelR, levelW, levelRW;
-    static IconBright Green(hIconRead), Red(hIconWrite), Yellow(hIconRW);
+    static IconBright Green(hIconReadD, hIconRead, hIconReadB ), 
+                      Red(hIconWriteD, hIconWrite, hIconWriteB ),
+                      Yellow(hIconRWd, hIconRW, hIconRWb);
     PDH_HQUERY hQueryR, hQueryW;
     PDH_HCOUNTER hCounterRead, hCounterWrite;
     PDH_FMT_COUNTERVALUE valueRead, valueWrite;
@@ -251,6 +247,9 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
     PdhOpenQuery(NULL, NULL, &hQueryW);
     PdhAddEnglishCounter(hQueryR, readCounterPath, NULL, &hCounterRead);
     PdhAddEnglishCounter(hQueryW, writeCounterPath, NULL, &hCounterWrite);
+
+    PdhCollectQueryData(hQueryR);
+    PdhCollectQueryData(hQueryW);
             
     while (WaitForSingleObject(ghExitEvent, 0) != WAIT_OBJECT_0)
     {
@@ -259,28 +258,28 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
         PdhGetFormattedCounterValue(hCounterRead, PDH_FMT_DOUBLE, NULL, &valueRead);
         PdhGetFormattedCounterValue(hCounterWrite, PDH_FMT_DOUBLE, NULL, &valueWrite);
 
-        if (valueRead.largeValue > 0ll && valueWrite.largeValue > 0ll)    // Читает и пишет
+        if (valueRead.doubleValue > 0. && valueWrite.doubleValue > 0.)    // Читает и пишет
         {
-            float meanValueRW = (valueRead.largeValue + valueWrite.doubleValue) / 2;
-            levelRW.Preparation(meanValueRW, 0.001);
-            Yellow.AdjustIconBrightness(hIconRW, &*pIconRW, levelRW);
-            UpdateTrayIcon(*pIconRW);
+            float meanValueRW = (valueRead.doubleValue + valueWrite.doubleValue) / 2;
+            levelRW.Preparation(meanValueRW, 0.001f);
+            HICON Y = Yellow.IconSelector(levelRW);
+            UpdateTrayIcon(Y);
         }
-        else if (valueRead.largeValue > 0ll)                           // Только читает
+        else if (valueRead.doubleValue > 0.)                           // Только читает
         {
             float meanValueR = (valueRead.doubleValue);
-            levelR.Preparation(meanValueR, 0.001);
-            Green.AdjustIconBrightness(hIconRead, &*pIconRead, levelR);
-            UpdateTrayIcon(*pIconRead);
+            levelR.Preparation(meanValueR, 0.001f);
+            HICON G = Green.IconSelector(levelR);
+            UpdateTrayIcon(G);
         }
-        else if (valueWrite.largeValue > 0ll)                          // Только пишет
+        else if (valueWrite.doubleValue > 0.)                          // Только пишет
         {
             float meanValueW = (valueWrite.doubleValue);
-            levelW.Preparation(meanValueW, 0.001);
-            Red.AdjustIconBrightness(hIconWrite, &*pIconWrite, levelW);
-            UpdateTrayIcon(*pIconWrite);
+            levelW.Preparation(meanValueW, 0.001f);
+            HICON R = Red.IconSelector(levelW);
+            UpdateTrayIcon(R);
         }
-        else                                                        // Курит
+        else                                                           // Курит
             UpdateTrayIcon(hIconIdle);
         Sleep(41);                                                  
     }
@@ -564,13 +563,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         hIconApp = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APP));
         hIconIdle = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_IDLE));
         hIconPause = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PAUSE));
+        hIconReadD = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_READD));
         hIconRead = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_READ));
+        hIconReadB = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_READB));
+        hIconWriteD = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WRITED));
         hIconWrite = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WRITE));
+        hIconWriteB = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WRITEB));
+        hIconRWd = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RWD));
         hIconRW = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RW));
-
-        pIconRead.emplace(hIconRead);
-        pIconWrite.emplace(hIconWrite);
-        pIconRW.emplace(hIconRW);
+        hIconRWb = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RWB));
 
         // Регистрация класса окна
         WNDCLASSEXW wcex = { sizeof(wcex) };
@@ -624,11 +625,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         nid.hIcon = hIconPause;
         Shell_NotifyIcon(NIM_ADD, &nid);
         // Изменяемые иконки анимации
-        nid.hIcon = *pIconRead;
+        nid.hIcon = hIconReadD;
         Shell_NotifyIcon(NIM_ADD, &nid);
-        nid.hIcon = *pIconWrite;
+        nid.hIcon = hIconRead;
         Shell_NotifyIcon(NIM_ADD, &nid);
-        nid.hIcon = *pIconRW;
+        nid.hIcon = hIconReadB;
+        Shell_NotifyIcon(NIM_ADD, &nid);
+        nid.hIcon = hIconWriteD;
+        Shell_NotifyIcon(NIM_ADD, &nid);
+        nid.hIcon = hIconWrite;
+        Shell_NotifyIcon(NIM_ADD, &nid);
+        nid.hIcon = hIconWriteB;
+        Shell_NotifyIcon(NIM_ADD, &nid);
+        nid.hIcon = hIconRWd;
+        Shell_NotifyIcon(NIM_ADD, &nid);
+        nid.hIcon = hIconRW;
+        Shell_NotifyIcon(NIM_ADD, &nid);
+        nid.hIcon = hIconRWb;
         Shell_NotifyIcon(NIM_ADD, &nid);
         // Версия нотификации
         nid.uVersion = NOTIFYICON_VERSION_4;

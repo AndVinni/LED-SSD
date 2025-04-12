@@ -181,11 +181,17 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
     </Image>
+    <Image Include="IconReadB.ico" />
+    <Image Include="IconReadD.ico" />
     <Image Include="IconRW.ico" />
+    <Image Include="IconRWb.ico" />
+    <Image Include="IconRWd.ico" />
     <Image Include="IconWrite.ico">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
     </Image>
+    <Image Include="IconWriteB.ico" />
+    <Image Include="IconWriteD.ico" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LED_SSD.cpp" />

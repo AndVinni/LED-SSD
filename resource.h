@@ -12,13 +12,19 @@
 #define IDS_INFO                        110
 #define IDI_PAUSE                       110
 #define IDS_AUTOLOAD                    111
+#define IDI_READD                       111
 #define IDS_PAUSE                       112
+#define IDI_READB                       112
 #define IDS_EXIT                        113
+#define IDI_RWD                         113
 #define IDS_ACTE                        114
+#define IDI_RWB                         114
 #define IDS_ACTP                        115
+#define IDI_WRITED                      115
 #define IDS_ACTEP                       116
+#define IDI_WRI                         116
+#define IDI_WRITEB                      116
 #define IDS_INFOE                       117
-#define IDS_STRING118                   118
 #define IDS_APP_DECR_E                  118
 #define IDM_EXIT                        124
 #define IDM_PAUSE                       125
@@ -29,7 +35,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
-#define _APS_NEXT_RESOURCE_VALUE        111
+#define _APS_NEXT_RESOURCE_VALUE        117
 #define _APS_NEXT_COMMAND_VALUE         40010
 #define _APS_NEXT_CONTROL_VALUE         1001
 #define _APS_NEXT_SYMED_VALUE           101

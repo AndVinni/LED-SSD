@@ -43,6 +43,24 @@
     <Image Include="IconPause.ico">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="IconReadB.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="IconReadD.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="IconRWb.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="IconRWd.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="IconWriteB.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="IconWriteD.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LED_SSD.cpp">
