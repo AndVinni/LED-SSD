@@ -13,7 +13,7 @@
 #define WINVER _WIN32_WINNT_WIN7
 #define _WIN32_WINNT _WIN32_WINNT_WIN7
 #define NTDDI_VERSION NTDDI_WIN7
-//#define WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #define NOCOMM
 
 #include "resource.h"
@@ -21,22 +21,15 @@
 #include <pdh.h>
 #include <shellapi.h>
 #include <wtsapi32.h>
-#include <string>
-#include <gdiplus.h>
-using namespace Gdiplus;
-#include <optional>
-#include <cmath>
-
-
+#include <stdio.h>
 
 #ifdef _DEBUG
     #include <fstream>
     #include <iostream>
-    import std;
+    //import std;
 #endif
 #pragma comment(lib, "pdh.lib")         // Работа со счётчиками
 #pragma comment(lib, "Wtsapi32.lib" )   // Работа с сеансом
-#pragma comment(lib, "gdiplus.lib")     // Модификация иконки в трее
 
 #define hKey HKEY_CURRENT_USER
 
@@ -97,18 +90,6 @@ void ShowContextMenu(HWND hwnd, POINT pt);
     }
 #endif
 
-static inline void InitGDIPlus()
-{
-    GdiplusStartupInput gdiplusStartupInput;
-    GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
-}
-
-static inline void ShutdownGDIPlus()
-{
-    GdiplusShutdown(gdiplusToken);
-}
-
-
 class IconBright
 {
     HICON hID;
@@ -129,14 +110,13 @@ public:
     HICON IconSelector(float brightnessFactor);
 };
 
-
 HICON IconBright::IconSelector(float brightnessFactor)
 {
     if (brightnessFactor < rmin)  return hID;
     if (brightnessFactor > rmax)  return hIB;
 
-    float darkRange = rmin / 5;
-    float brightRange = rmax / 4;
+    float darkRange = rmin / 10;
+    float brightRange = rmax / 10;
 
     if (brightnessFactor >= rmin && brightnessFactor < darkRange )
         return hID;
@@ -149,12 +129,7 @@ HICON IconBright::IconSelector(float brightnessFactor)
 class Normalizator
 {
 public:
-    Normalizator()
-        : x_prev(0.0f), y_prev(0.0f),
-        input_min(MIN_AC_RANGE), input_max(MAX_AC_RANGE),
-        output_min(MIN_OUT_RANGE), output_max(MAX_OUT_RANGE),
-        log_scaled(0.0f),
-        k(5.0f)
+    Normalizator()  : x_prev(0.0f), y_prev(0.0f), scaled(0.0f)
     {
     }
 
@@ -163,28 +138,16 @@ public:
     {
         float gb = value < 0.0f ? 0.0f : value / 1073741824.0f; // gb/sec
         float no_dc = remove_dc(gb, alpha);
-        //float scaled = scale_linear(no_dc);
-        //log_scaled = scale_logarithmic(scaled);
-        return no_dc;
+        return scaled = no_dc;
     }
 
-    operator float() { return log_scaled; }
+    operator float() { return scaled; }
 
 private:
     // Состояния фильтра
     float x_prev;
     float y_prev;
-
-    // Диапазоны масштабирования
-    float input_min;
-    float input_max;
-    float output_min;
-    float output_max;
-    float log_scaled;
-
-    // Коэффициент логарифмического масштабирования
-    float k;
-
+    float scaled;
 
     // Удаление постоянной составляющей
     inline float remove_dc(float x, float alpha)
@@ -194,34 +157,7 @@ private:
         y_prev = y;
         return y;
     }
-
-    // Линейное масштабирование из [MIN_AC_RANGE, MAX_AC_RANGE] в [MIN_OUT_RANGE, MAX_OUT_RANGE]
-    inline float scale_linear(float value)
-    {   
-        // Нормализация в [0..1]
-        float normalized = (value - input_min) / (input_max - input_min);
-        // Масштабирование в [0..10]
-        return output_min + normalized * (output_max - output_min);
-    }
-
-    // Логарифмическое масштабирование в диапазоне [ output_min, output_max]
-    inline float scale_logarithmic(float value)
-    {
-        if (value <= output_min) return output_min;
-        if (value >= output_max) return output_max;
-
-        float normalized_input = value - output_min;
-        float input_range = output_max - output_min;
-
-        float numerator = std::log1p(k * normalized_input);
-        float denominator = std::log1p(k * input_range);
-
-        float factor = numerator / denominator;
-        return output_min + factor * (output_max - output_min);
-    }
 };
-
-
 
 void inline static UpdateTrayIcon(HICON hIcon)
 {
@@ -262,22 +198,19 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
         {
             float meanValueRW = (valueRead.doubleValue + valueWrite.doubleValue) / 2;
             levelRW.Preparation(meanValueRW, 0.001f);
-            HICON Y = Yellow.IconSelector(levelRW);
-            UpdateTrayIcon(Y);
+            UpdateTrayIcon(Yellow.IconSelector(levelRW));
         }
         else if (valueRead.doubleValue > 0.)                           // Только читает
         {
             float meanValueR = (valueRead.doubleValue);
             levelR.Preparation(meanValueR, 0.001f);
-            HICON G = Green.IconSelector(levelR);
-            UpdateTrayIcon(G);
+            UpdateTrayIcon(Green.IconSelector(levelR));
         }
         else if (valueWrite.doubleValue > 0.)                          // Только пишет
         {
             float meanValueW = (valueWrite.doubleValue);
             levelW.Preparation(meanValueW, 0.001f);
-            HICON R = Red.IconSelector(levelW);
-            UpdateTrayIcon(R);
+            UpdateTrayIcon(Red.IconSelector(levelW));
         }
         else                                                           // Курит
             UpdateTrayIcon(hIconIdle);
@@ -688,7 +621,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             
         }
 
-        InitGDIPlus();
+        //InitGDIPlus();
 
         if (window)
         {   // Главный цикл сообщений:
@@ -700,7 +633,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             }
         }
 
-        ShutdownGDIPlus();
+        //ShutdownGDIPlus();
         WTSUnRegisterSessionNotification(window);
 
 #ifdef _DEBUG
