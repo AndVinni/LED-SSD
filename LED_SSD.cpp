@@ -26,7 +26,6 @@
 #ifdef _DEBUG
     #include <fstream>
     #include <iostream>
-    //import std;
 #endif
 #pragma comment(lib, "pdh.lib")         // Работа со счётчиками
 #pragma comment(lib, "Wtsapi32.lib" )   // Работа с сеансом
@@ -166,7 +165,7 @@ void inline static UpdateTrayIcon(HICON hIcon)
 }
 
 static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
-{   // Мониторинг активности дисков через счётчики производительности системы
+{   // Мониторинг активности дисков через системные счётчики производительности дисков
 
     static Normalizator levelR, levelW, levelRW;
     static IconBright Green(hIconReadD, hIconRead, hIconReadB ), 
@@ -621,8 +620,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             
         }
 
-        //InitGDIPlus();
-
         if (window)
         {   // Главный цикл сообщений:
             MSG msg;
@@ -633,7 +630,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             }
         }
 
-        //ShutdownGDIPlus();
         WTSUnRegisterSessionNotification(window);
 
 #ifdef _DEBUG
