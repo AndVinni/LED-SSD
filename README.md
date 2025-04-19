@@ -1,10 +1,11 @@
 "# LED-SSD" 
-Disk activity indicator.
-Replacement of a missing or invisible hardware indicator.
-- Small, clean Windows API language
-- Manages priorities subtly
+The disk activity indicator.
+It is used for quick assessment of disk loading.
+Replaces a missing or invisible hardware indicator.
+- Compact, intuitive, used Windows API level, and C++17.
+- Fine-grained priority management
 - Unobtrusive
-- It is disabled when the session is locked
+- Reading and writing are indicated by color
+- It turns off when the session is blocked.
 
-Big greetings to the designers of modern laptops.
-
+Big greetings to the developers of modern laptops.

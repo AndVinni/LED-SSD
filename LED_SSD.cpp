@@ -271,7 +271,7 @@ static APP CtrlAutoLoad(APP mode)
             }
             state = APP::UNLOAD;
         }
-        break;
+    break;
     case APP::UNLOAD:   // Удаление записи автозагрузки реестра
         lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_ALL_ACCESS, &hKeyDescriptor);
         if (lResult == ERROR_SUCCESS)
@@ -280,7 +280,7 @@ static APP CtrlAutoLoad(APP mode)
             RegCloseKey(hKeyDescriptor);
             state = APP::UNLOAD;
         }
-        break;
+    break;
     case APP::LOAD: // Создание записи автозагрузки реестра
         lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_ALL_ACCESS, &hKeyDescriptor);
         if ( lResult == ERROR_SUCCESS  )
@@ -291,7 +291,7 @@ static APP CtrlAutoLoad(APP mode)
             RegCloseKey(hKeyDescriptor);
             state = APP::LOAD;
         }
-        break;
+    break;
     }
     return state;
 }
@@ -327,7 +327,7 @@ static THREAD CtrlThread(THREAD mode)
             }
             state = THREAD::RUN;
         }
-        break;
+    break;
     case THREAD::PAUSE:
         lResult = RegCreateKeyEx(hKey, szwSubKey, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hKeyDescriptor, NULL);
         if (lResult == ERROR_SUCCESS)
@@ -342,7 +342,7 @@ static THREAD CtrlThread(THREAD mode)
             }
         }
         state = THREAD::RUN;
-        break;
+    break;
     case THREAD::RUN:
         lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_ALL_ACCESS, &hKeyDescriptor);
         if (lResult == ERROR_SUCCESS)
@@ -352,7 +352,7 @@ static THREAD CtrlThread(THREAD mode)
             state = THREAD::RUN;
         }
         state = THREAD::PAUSE;
-        break;
+    break;
     }
     return state;
 }
@@ -372,7 +372,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
             {
                 case IDM_EXIT:
                     DestroyWindow(hwnd);
-                    break;
+                break;
 
                 case IDM_PAUSE:
                     if (CtrlThread(THREAD::CHECK) == THREAD::RUN)
@@ -422,7 +422,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
                     POINT const pt = { LOWORD(wParam), HIWORD(wParam) };
                     ShowContextMenu(hwnd, pt);
                 }
-                break;
+            break;
             }
         break;
 
@@ -436,14 +436,14 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
                     SuspendThread(monitorThread);
                     SetPriorityClass(hThis, THREAD_MODE_BACKGROUND_BEGIN);
                 }
-                break;
+            break;
             case WTS_SESSION_UNLOCK:
                 if (CtrlThread(THREAD::CHECK) != THREAD::PAUSE)
                 {
                     ResumeThread(monitorThread);
                     SetPriorityClass(hThis, THREAD_MODE_BACKGROUND_END);
                 }
-                break;
+            break;
             }
         }
         break;
