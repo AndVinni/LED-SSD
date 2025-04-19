@@ -1,4 +1,3 @@
-"# LED-SSD" 
 The disk activity indicator.
 It is used for quick assessment of disk loading.
 Replaces a missing or invisible hardware indicator.
