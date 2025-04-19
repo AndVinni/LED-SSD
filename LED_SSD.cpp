@@ -1,8 +1,12 @@
-// Утилита индикации чтения и записи дисковой подсистемы Windows
+// Утилита индикации чтения и записи дисковой подсистемы Windows.
+// Замена аппаратного светодиода, для оперативной оценки загрузки дисков.
+// Индтикатор располагается на панели задач.
+// Зелёный - чтение, желтый - чтение и запись, красный - запись.
+// Каждый цет имеет 3 градации яркости, зависящие от изменения скорости.
 //                  
 //                          LED-SSD
 //                           
-//          WIN7 и младше, x32, x64, C++ 14, RU, EN, unicode             
+//          WIN7 и младше, x32, x64, C/C++ 17, RU, EN, unicode             
 //                          
 // "Вспомнить всё" = 30 лет паузы в проограммировании для Windows на C++
 //                  (C) Vinni, Апрель 2025 г.
@@ -56,8 +60,8 @@ const float MIN_AC_RANGE = -10.f;
 const float MAX_AC_RANGE = 10.f;
 
 NOTIFYICONDATAW nid ={ sizeof(nid) };
-HWND window = NULL;
-HMENU hMenu, hSubMenu = NULL;
+HWND   window = NULL;
+HMENU  hMenu, hSubMenu = NULL;
 HANDLE monitorThread = NULL;
 HANDLE ghExitEvent = NULL;
 HANDLE hThis=NULL;
@@ -222,8 +226,7 @@ void ShowContextMenu(HWND hwnd, POINT pt)
     {
         hSubMenu = GetSubMenu(hMenu, 0);
         if (hSubMenu)
-        {
-            // Окно на передний план, иначе контекстное меню не исчезнет
+        {   // Окно на передний план, иначе контекстное меню не исчезнет
             SetForegroundWindow(hwnd);
             // Выравниевание выпадающего меню
             UINT uFlags = TPM_RIGHTBUTTON;
@@ -421,7 +424,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
                 }
                 break;
             }
-            break;
+        break;
 
         case WM_WTSSESSION_CHANGE:
         {
@@ -488,18 +491,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
 
         // Загрузка иконок из ресурсов
-        hIconApp = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APP));
-        hIconIdle = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_IDLE));
-        hIconPause = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PAUSE));
-        hIconReadD = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_READD));
-        hIconRead = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_READ));
-        hIconReadB = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_READB));
+        hIconApp    = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APP));
+        hIconIdle   = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_IDLE));
+        hIconPause  = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PAUSE));
+        hIconReadD  = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_READD));
+        hIconRead   = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_READ));
+        hIconReadB  = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_READB));
         hIconWriteD = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WRITED));
-        hIconWrite = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WRITE));
+        hIconWrite  = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WRITE));
         hIconWriteB = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WRITEB));
-        hIconRWd = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RWD));
-        hIconRW = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RW));
-        hIconRWb = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RWB));
+        hIconRWd    = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RWD));
+        hIconRW     = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RW));
+        hIconRWb    = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RWB));
 
         // Регистрация класса окна
         WNDCLASSEXW wcex = { sizeof(wcex) };
