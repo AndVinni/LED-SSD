@@ -8,8 +8,6 @@
 //                  (C) Vinni, Апрель 2025 г.
 //
 
-//https://chatgpt.com/share/67f58dc1-9378-8001-ada7-08f38eedde20
-
 #define WINVER _WIN32_WINNT_WIN7
 #define _WIN32_WINNT _WIN32_WINNT_WIN7
 #define NTDDI_VERSION NTDDI_WIN7
@@ -56,8 +54,6 @@ HICON hIconIdle, hIconApp, hIconPause,  hIconReadD, hIconRead, hIconReadB,
 
 const float MIN_AC_RANGE = -10.f;
 const float MAX_AC_RANGE = 10.f;
-const float MIN_OUT_RANGE = 0.0f;
-const float MAX_OUT_RANGE = 10.f;
 
 NOTIFYICONDATAW nid ={ sizeof(nid) };
 HWND window = NULL;
@@ -70,7 +66,7 @@ enum class APP : short { CHECK, UNLOAD, LOAD };
 enum class THREAD : short { CHECK, PAUSE, RUN };
 static APP CtrlAutoLoad(APP);
 static THREAD CtrlThread(THREAD);
-bool UserLocale_RU; // Локализация или русская или английская
+bool UserLocale_RU;                         // Локализация или русская или английская
 void ShowContextMenu(HWND hwnd, POINT pt);
 
 #ifdef _DEBUG
@@ -114,7 +110,7 @@ HICON IconBright::IconSelector(float brightnessFactor)
     if (brightnessFactor < rmin)  return hID;
     if (brightnessFactor > rmax)  return hIB;
 
-    float darkRange = rmin / 10;
+    float darkRange = rmin / 100;
     float brightRange = rmax / 10;
 
     if (brightnessFactor >= rmin && brightnessFactor < darkRange )
@@ -132,7 +128,7 @@ public:
     {
     }
 
-    // Основная функция: удаление DC + линейное масштабирование + логарифм
+    // Основная функция: удаление DC + масштабирование
     inline float Preparation(float value, float alpha)
     {
         float gb = value < 0.0f ? 0.0f : value / 1073741824.0f; // gb/sec
@@ -193,27 +189,27 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
         PdhGetFormattedCounterValue(hCounterRead, PDH_FMT_DOUBLE, NULL, &valueRead);
         PdhGetFormattedCounterValue(hCounterWrite, PDH_FMT_DOUBLE, NULL, &valueWrite);
 
-        if (valueRead.doubleValue > 0. && valueWrite.doubleValue > 0.)    // Читает и пишет
+        if (valueRead.doubleValue > 0.f && valueWrite.doubleValue > 0.f)    // Читает и пишет
         {
-            float meanValueRW = (valueRead.doubleValue + valueWrite.doubleValue) / 2;
+            float meanValueRW = (valueRead.doubleValue + valueWrite.doubleValue) / 2.f;
             levelRW.Preparation(meanValueRW, 0.001f);
             UpdateTrayIcon(Yellow.IconSelector(levelRW));
         }
-        else if (valueRead.doubleValue > 0.)                           // Только читает
+        else if (valueRead.doubleValue > 0.f)               // Только читает
         {
             float meanValueR = (valueRead.doubleValue);
             levelR.Preparation(meanValueR, 0.001f);
             UpdateTrayIcon(Green.IconSelector(levelR));
         }
-        else if (valueWrite.doubleValue > 0.)                          // Только пишет
+        else if (valueWrite.doubleValue > 0.f)              // Только пишет
         {
             float meanValueW = (valueWrite.doubleValue);
             levelW.Preparation(meanValueW, 0.001f);
             UpdateTrayIcon(Red.IconSelector(levelW));
         }
-        else                                                           // Курит
+        else                                                // Курит
             UpdateTrayIcon(hIconIdle);
-        Sleep(41);                                                  
+        Sleep(41);                                          // 24.39 Hz                                
     }
     PdhCloseQuery(hQueryR);
     PdhCloseQuery(hQueryW);
@@ -617,7 +613,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         {
             lstrcpy(nid.szTip, szTip);
             CheckMenuItem(hMenu, IDM_PAUSE, MF_UNCHECKED);
-            
         }
 
         if (window)
