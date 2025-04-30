@@ -549,10 +549,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         LoadString(hInstance, IDS_ACT, nid.szInfoTitle, ARRAYSIZE(nid.szInfoTitle));
         LoadString(hInstance, IDS_INFO, nid.szInfo, ARRAYSIZE(nid.szInfo));
         // Permanent animation icons
-        nid.dwState = NIS_SHAREDICON;
+        nid.dwState = NIS_HIDDEN | NIS_SHAREDICON;
         nid.hIcon = hIconIdle;
         Shell_NotifyIcon(NIM_ADD, &nid);
-        nid.dwState = NIS_HIDDEN;
         nid.hIcon = hIconPause;
         Shell_NotifyIcon(NIM_ADD, &nid);
         // Changeable animation icons
