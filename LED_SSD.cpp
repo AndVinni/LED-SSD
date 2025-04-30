@@ -115,7 +115,7 @@ HICON IconBright::IconSelector(float brightnessFactor)
     if (brightnessFactor > rmax)  return hIB;
 
     float darkRange = rmin / 100;
-    float brightRange = rmax / 10;
+    float brightRange = rmax / 100;
 
     if (brightnessFactor >= rmin && brightnessFactor < darkRange )
         return hID;
