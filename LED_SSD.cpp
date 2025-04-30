@@ -1,15 +1,15 @@
-// Утилита индикации чтения и записи дисковой подсистемы Windows.
-// Замена аппаратного светодиода, для оперативной оценки загрузки дисков.
-// Индтикатор располагается на панели задач.
-// Зелёный - чтение, желтый - чтение и запись, красный - запись.
-// Каждый цет имеет 3 градации яркости, зависящие от изменения скорости.
+// A utility for indicating the reading and writing of the Windows disk subsystem.
+// Replacing the hardware LED, for rapid evaluation of disk loading.
+// The indicator is located on the taskbar.
+// Green - reading, yellow - reading and writing, red - writing.
+// Each color has 3 brightness gradations, depending on the speed change.
 //                  
 //                          LED-SSD
 //                           
-//          WIN7 и младше, x32, x64, C/C++ 17, RU, EN, unicode             
+//          WIN7 and younger, x32, x64, C/C++ 17, RU, EN, unicode             
 //                          
-// "Вспомнить всё" = 30 лет паузы в проограммировании для Windows на C++
-//                  (C) Vinni, Апрель 2025 г.
+// "Remember everything" = 30 years of pause in programming for Windows in C++
+//                  (C) Vinni, April 2025
 //
 
 #define WINVER _WIN32_WINNT_WIN7
@@ -29,13 +29,13 @@
     #include <fstream>
     #include <iostream>
 #endif
-#pragma comment(lib, "pdh.lib")         // Работа со счётчиками
-#pragma comment(lib, "Wtsapi32.lib" )   // Работа с сеансом
+#pragma comment(lib, "pdh.lib")         // Working with counters
+#pragma comment(lib, "Wtsapi32.lib" )   // Working with the session
 
 #define hKey HKEY_CURRENT_USER
 
 ULONG_PTR gdiplusToken;
-// GUID - уникальный идентификатор иконки
+// GUID is the unique identifier of the icon.
 class __declspec(uuid("8a002844-4745-4336-a9a1-98ff80bce4c2")) AppIcon;
 // Имя мьютекса
 const wchar_t *szwMutex = L"36д85б51e72д4504997ф28е0е243101с";
@@ -43,7 +43,7 @@ const wchar_t *szWindowClass = L"LED-SSD";
 const wchar_t *szPause = L"Pause";
       wchar_t  szTip[128] = L"";
       wchar_t  szTipP[128] = L"";
-const wchar_t* szwSelectedDisk = L"_Total";        // Активность всех дисков
+const wchar_t* szwSelectedDisk = L"_Total";        // Activity of all disks
 wchar_t readCounterPath[PDH_MAX_COUNTER_PATH];
 wchar_t writeCounterPath[PDH_MAX_COUNTER_PATH];
 wchar_t LocaleName[LOCALE_NAME_MAX_LENGTH];
@@ -70,7 +70,7 @@ enum class APP : short { CHECK, UNLOAD, LOAD };
 enum class THREAD : short { CHECK, PAUSE, RUN };
 static APP CtrlAutoLoad(APP);
 static THREAD CtrlThread(THREAD);
-bool UserLocale_RU;                         // Локализация или русская или английская
+bool UserLocale_RU;                         // Localization is either Russian or English
 void ShowContextMenu(HWND hwnd, POINT pt);
 
 #ifdef _DEBUG
@@ -132,7 +132,7 @@ public:
     {
     }
 
-    // Основная функция: удаление DC + масштабирование
+    // Main function: DC removal + scaling
     inline float Preparation(float value, float alpha)
     {
         float gb = value < 0.0f ? 0.0f : value / 1073741824.0f; // gb/sec
@@ -143,12 +143,12 @@ public:
     operator float() { return scaled; }
 
 private:
-    // Состояния фильтра
+    // Filter status
     float x_prev;
     float y_prev;
     float scaled;
 
-    // Удаление постоянной составляющей
+    // Removing the permanent component
     inline float remove_dc(float x, float alpha)
     {
         float y = x - x_prev + alpha * y_prev;
@@ -165,7 +165,7 @@ void inline static UpdateTrayIcon(HICON hIcon)
 }
 
 static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
-{   // Мониторинг активности дисков через системные счётчики производительности дисков
+{   // Monitoring disk activity via system disk performance counters
 
     static Normalizator levelR, levelW, levelRW;
     static IconBright Green(hIconReadD, hIconRead, hIconReadB ), 
@@ -193,25 +193,25 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
         PdhGetFormattedCounterValue(hCounterRead, PDH_FMT_DOUBLE, NULL, &valueRead);
         PdhGetFormattedCounterValue(hCounterWrite, PDH_FMT_DOUBLE, NULL, &valueWrite);
 
-        if (valueRead.doubleValue > 0.f && valueWrite.doubleValue > 0.f)    // Читает и пишет
+        if (valueRead.doubleValue > 0.f && valueWrite.doubleValue > 0.f)    // Reads and writes
         {
             float meanValueRW = (valueRead.doubleValue + valueWrite.doubleValue) / 2.f;
             levelRW.Preparation(meanValueRW, 0.001f);
             UpdateTrayIcon(Yellow.IconSelector(levelRW));
         }
-        else if (valueRead.doubleValue > 0.f)               // Только читает
+        else if (valueRead.doubleValue > 0.f)               // Only reads
         {
             float meanValueR = (valueRead.doubleValue);
             levelR.Preparation(meanValueR, 0.001f);
             UpdateTrayIcon(Green.IconSelector(levelR));
         }
-        else if (valueWrite.doubleValue > 0.f)              // Только пишет
+        else if (valueWrite.doubleValue > 0.f)              // Only writes
         {
             float meanValueW = (valueWrite.doubleValue);
             levelW.Preparation(meanValueW, 0.001f);
             UpdateTrayIcon(Red.IconSelector(levelW));
         }
-        else                                                // Курит
+        else                                                // Smokes
             UpdateTrayIcon(hIconIdle);
         Sleep(41);                                          // 24.39 Hz                                
     }
@@ -226,9 +226,9 @@ void ShowContextMenu(HWND hwnd, POINT pt)
     {
         hSubMenu = GetSubMenu(hMenu, 0);
         if (hSubMenu)
-        {   // Окно на передний план, иначе контекстное меню не исчезнет
+        {   // Window to the foreground, otherwise the context menu will not disappear
             SetForegroundWindow(hwnd);
-            // Выравниевание выпадающего меню
+            // Alignment of the drop-down menu
             UINT uFlags = TPM_RIGHTBUTTON;
             if (GetSystemMetrics(SM_MENUDROPALIGNMENT) != 0)
                 uFlags |= TPM_RIGHTALIGN;
@@ -240,7 +240,7 @@ void ShowContextMenu(HWND hwnd, POINT pt)
 }
 
 static APP CtrlAutoLoad(APP mode)  
-{   // Управление автозагрузкой через реестр
+{   // Auto-upload management via the registry
 
     static APP state = APP::UNLOAD;
     static wchar_t szwSubKey[MAX_PATH] = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
@@ -252,17 +252,17 @@ static APP CtrlAutoLoad(APP mode)
 
     switch (mode)
     {
-    case APP::CHECK: // Проверка состояния автозагрузки
-        {   // Открываем ветвь реестра
+    case APP::CHECK: // Checking the auto-upload status
+        {   // Opening the registry branch
             lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_READ, &hKeyDescriptor);
             if (lResult == ERROR_SUCCESS)
-            {   // Есть запись реестра
+            {   // There is a registry entry
                 lResult = RegGetValue(hKey, szwSubKey, szWindowClass, RRF_RT_REG_SZ, NULL, szwKeyValue, &size);
-                if (lResult == ERROR_SUCCESS) // Получили значение реестра
-                {   // Получаем полный путь к файлу
+                if (lResult == ERROR_SUCCESS) // Got the registry value
+                {   // Getting the full path to the file
                     GetModuleFileName(NULL, szwPath, MAX_PATH);
                     if (wcscmp(szwKeyValue, szwPath) == 0)
-                    {   // Запись в реестре есть и совпадает с текущим положением программы
+                    {   // There is an entry in the registry and it matches the current position of the program
                         state = APP::LOAD;
                         break;
                     }
@@ -272,7 +272,7 @@ static APP CtrlAutoLoad(APP mode)
             state = APP::UNLOAD;
         }
     break;
-    case APP::UNLOAD:   // Удаление записи автозагрузки реестра
+    case APP::UNLOAD:   // Deleting Registry startup entry
         lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_ALL_ACCESS, &hKeyDescriptor);
         if (lResult == ERROR_SUCCESS)
         {
@@ -281,7 +281,7 @@ static APP CtrlAutoLoad(APP mode)
             state = APP::UNLOAD;
         }
     break;
-    case APP::LOAD: // Создание записи автозагрузки реестра
+    case APP::LOAD: // Creating a registry startup entry
         lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_ALL_ACCESS, &hKeyDescriptor);
         if ( lResult == ERROR_SUCCESS  )
         { 
@@ -297,7 +297,7 @@ static APP CtrlAutoLoad(APP mode)
 }
 
 static THREAD CtrlThread(THREAD mode)
-{   // Фиксация состояния паузы в реестре
+{   // Fixing the pause status in the registry
 
     static THREAD state = THREAD::RUN;
     static wchar_t szwSubKey[MAX_PATH] = L"";
@@ -306,18 +306,18 @@ static THREAD CtrlThread(THREAD mode)
     DWORD dwKeyValue=0;
     static DWORD size = sizeof(dwKeyValue);
 
-    // Ветвь реестра параметра для паузы
+    // Registry branch of the pause parameter
     swprintf_s(szwSubKey, L"%s%s", L"Software\\", szWindowClass );
 
     switch (mode)
     {
     case THREAD::CHECK:
-        {   // Открываем ветвь реестра
+        {   // Opening the registry branch
             lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_READ, &hKeyDescriptor);
             if (lResult == ERROR_SUCCESS)
-            {   // Есть запись реестра
+            {   // There is a registry entry
                 lResult = RegGetValue(hKey, szwSubKey, szPause, RRF_RT_DWORD, NULL, &dwKeyValue, &size);
-                if (lResult == ERROR_SUCCESS) // Получили значение реестра
+                if (lResult == ERROR_SUCCESS) // Got the registry value
                     if (dwKeyValue == 1)
                     {   
                         state = THREAD::PAUSE;
@@ -367,7 +367,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
         case WM_COMMAND:
         {
             int const wmId = LOWORD(wParam);
-            // Анализ пунктов меню:
+            // Analysis of menu items:
             switch (wmId)
             {
                 case IDM_EXIT:
@@ -472,13 +472,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     try
     {
 #endif
-        hThis = GetCurrentProcess(); // Этот
+        hThis = GetCurrentProcess(); // This one
 
-        // Язык пользователя в системе
+        // The user's language in the system
         if (GetUserDefaultLocaleName(LocaleName, LOCALE_NAME_MAX_LENGTH) != 0)
             UserLocale_RU = wcscmp(LocaleName, L"ru-RU") == 0 ? TRUE : FALSE;
 
-        // Блокировка запуска второго экземпляра программы
+        // Blocking the launch of the second instance of the program
         HANDLE mutex = CreateMutexEx(0, szwMutex, CREATE_MUTEX_INITIAL_OWNER, READ_CONTROL);
 
         if (GetLastError() == ERROR_ALREADY_EXISTS)
@@ -490,7 +490,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             return 1;
         }
 
-        // Загрузка иконок из ресурсов
+        // Loading icons from resources
         hIconApp    = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APP));
         hIconIdle   = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_IDLE));
         hIconPause  = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PAUSE));
@@ -504,7 +504,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         hIconRW     = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RW));
         hIconRWb    = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RWB));
 
-        // Регистрация класса окна
+        // Window class registration
         WNDCLASSEXW wcex = { sizeof(wcex) };
         wcex.cbSize = sizeof(WNDCLASSEXW);
         wcex.style = CS_HREDRAW | CS_VREDRAW | CS_CLASSDC;
@@ -517,23 +517,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         wcex.lpszClassName = szWindowClass;
         RegisterClassEx(&wcex);
 
-        // Загрузка меню из ресурсов
+        // Loading the menu from resources
         hMenu = LoadMenu(hInstance, MAKEINTRESOURCE(IDC_CONTEXTMENU));
 
-        // Создание главного окна
+        // Creating the main window
         window = CreateWindowEx(WS_EX_APPWINDOW, szWindowClass, NULL, 0, 0, 0, 0, 0, NULL, hMenu, hInstance, NULL);
 
-        // Создание события завершения потока мониторинга
+        // Creating a monitoring flow termination event
         ghExitEvent = CreateEvent(NULL, TRUE, FALSE, TEXT("ExitEvent"));
 
-        // Регистрируем окно, для получения сообщений сессии
+        // Register a window to receive session messages
         WTSRegisterSessionNotification(window, NOTIFY_FOR_THIS_SESSION);
 
-        // Создание потока мониторинга
+        // Creating a monitoring flow
         if ((monitorThread = CreateThread(NULL, 65536, MonitorDiskActivity, NULL, 0, &dwThreadId)))
             SetPriorityClass(monitorThread, THREAD_PRIORITY_ABOVE_NORMAL );
 
-        // Создание контекста для нотификации
+        // Creating a notification context
         nid.cbSize = sizeof(nid);
         nid.hWnd = window;
         nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_SHOWTIP | NIF_GUID;
@@ -542,20 +542,20 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         nid.dwState = NIS_SHAREDICON;
         nid.hBalloonIcon = hIconApp;
         nid.uCallbackMessage = WMAPP_NOTIFYCALLBACK;
-        // Тексты нотификации
+        // Notification texts
         LoadString(hInstance, IDS_ACT, szTip, ARRAYSIZE(szTip));
         LoadString(hInstance, IDS_ACTP, szTipP, ARRAYSIZE(szTipP));
         lstrcpy(nid.szTip, szTip);
         LoadString(hInstance, IDS_ACT, nid.szInfoTitle, ARRAYSIZE(nid.szInfoTitle));
         LoadString(hInstance, IDS_INFO, nid.szInfo, ARRAYSIZE(nid.szInfo));
-        // Постоянные иконки анимации
+        // Permanent animation icons
         nid.dwState = NIS_SHAREDICON;
         nid.hIcon = hIconIdle;
         Shell_NotifyIcon(NIM_ADD, &nid);
         nid.dwState = NIS_HIDDEN;
         nid.hIcon = hIconPause;
         Shell_NotifyIcon(NIM_ADD, &nid);
-        // Изменяемые иконки анимации
+        // Changeable animation icons
         nid.hIcon = hIconReadD;
         Shell_NotifyIcon(NIM_ADD, &nid);
         nid.hIcon = hIconRead;
@@ -574,11 +574,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         Shell_NotifyIcon(NIM_ADD, &nid);
         nid.hIcon = hIconRWb;
         Shell_NotifyIcon(NIM_ADD, &nid);
-        // Версия нотификации
+        // Notification version
         nid.uVersion = NOTIFYICON_VERSION_4;
         Shell_NotifyIcon(NIM_SETVERSION, &nid);
 
-        if (!UserLocale_RU) // Если не русский, тогда английский
+        if (!UserLocale_RU) // If not Russian, then English
         {
             wchar_t szAutoloadMenu[85], szPauseMenu[85], szExitMenu[85];
             LoadString(hInstance, IDS_AUTOLOAD, szAutoloadMenu, ARRAYSIZE(szAutoloadMenu));
@@ -594,13 +594,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             Shell_NotifyIcon(NIM_MODIFY, &nid);
         }
 
-        // Проверка состояния автозагрузки
+        // Checking the auto-upload status
         if (CtrlAutoLoad(APP::CHECK) == APP::LOAD)
             CheckMenuItem(hMenu, IDM_AUTOLOAD, MF_CHECKED);
         else
             CheckMenuItem(hMenu, IDM_AUTOLOAD, MF_UNCHECKED);
 
-        // Проверка состояния паузы
+        // Checking the pause status
         if (CtrlThread(THREAD::CHECK) == THREAD::PAUSE)
         {
             if (monitorThread)
@@ -619,7 +619,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
 
         if (window)
-        {   // Главный цикл сообщений:
+        {   // Main message loop:
             MSG msg;
             while (GetMessage(&msg, 0, 0, 0))
             {
@@ -634,7 +634,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     }
     catch (...)
     {
-        MessageBoxEx(NULL, L"Что-то пошло не так...", L"Исключение!", MB_OK, 0);
+        MessageBoxEx(NULL, L"Something went wrong...", L"Houston, we have a problem!", MB_OK, 0);
         return 1;
     }
 #endif
