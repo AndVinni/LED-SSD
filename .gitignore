@@ -4,7 +4,6 @@
 *.png
 *.zip
 *.7z
-*.xlsx
 
 # Compiled Object files
 Setup/

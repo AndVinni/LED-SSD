@@ -2,7 +2,7 @@
 // Замена аппаратного светодиода, для оперативной оценки загрузки дисков.
 // Индтикатор располагается на панели задач.
 // Зелёный - чтение, желтый - чтение и запись, красный - запись.
-// Каждый цвет имеет 3 градации яркости, зависящие от изменения скорости.
+// Каждый цет имеет 3 градации яркости, зависящие от изменения скорости.
 //                  
 //                          LED-SSD
 //                           
@@ -24,7 +24,6 @@
 #include <shellapi.h>
 #include <wtsapi32.h>
 #include <stdio.h>
-#include <string>
 
 #ifdef _DEBUG
     #include <fstream>
@@ -107,16 +106,16 @@ public:
         hIB = hIconB;
     }
 
-    const HICON IconSelector(float brightnessFactor);
+    HICON IconSelector(float brightnessFactor);
 };
 
-const HICON IconBright::IconSelector(float brightnessFactor)
+HICON IconBright::IconSelector(float brightnessFactor)
 {
     if (brightnessFactor < rmin)  return hID;
     if (brightnessFactor > rmax)  return hIB;
 
     float darkRange = rmin / 100;
-    float brightRange = rmax / 100;
+    float brightRange = rmax / 10;
 
     if (brightnessFactor >= rmin && brightnessFactor < darkRange )
         return hID;
@@ -194,19 +193,19 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
         PdhGetFormattedCounterValue(hCounterRead, PDH_FMT_DOUBLE, NULL, &valueRead);
         PdhGetFormattedCounterValue(hCounterWrite, PDH_FMT_DOUBLE, NULL, &valueWrite);
 
-        if (valueRead.doubleValue > 0. && valueWrite.doubleValue > 0.)    // Читает и пишет
+        if (valueRead.doubleValue > 0.f && valueWrite.doubleValue > 0.f)    // Читает и пишет
         {
-            float meanValueRW = (valueRead.doubleValue + valueWrite.doubleValue) / 2.;
+            float meanValueRW = (valueRead.doubleValue + valueWrite.doubleValue) / 2.f;
             levelRW.Preparation(meanValueRW, 0.001f);
             UpdateTrayIcon(Yellow.IconSelector(levelRW));
         }
-        else if (valueRead.doubleValue > 0.)               // Только читает
+        else if (valueRead.doubleValue > 0.f)               // Только читает
         {
             float meanValueR = (valueRead.doubleValue);
             levelR.Preparation(meanValueR, 0.001f);
             UpdateTrayIcon(Green.IconSelector(levelR));
         }
-        else if (valueWrite.doubleValue > 0.)              // Только пишет
+        else if (valueWrite.doubleValue > 0.f)              // Только пишет
         {
             float meanValueW = (valueWrite.doubleValue);
             levelW.Preparation(meanValueW, 0.001f);
