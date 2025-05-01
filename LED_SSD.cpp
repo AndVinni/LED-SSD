@@ -57,7 +57,7 @@ HICON hIconIdle, hIconApp, hIconPause,  hIconReadD, hIconRead, hIconReadB,
                                         hIconWriteD, hIconWrite, hIconWriteB, 
                                         hIconRWd, hIconRW, hIconRWb ;
 
-const float MIN_AC_RANGE = -10.f;
+const float MIN_AC_RANGE = -10.f; // gb/sec
 const float MAX_AC_RANGE = 10.f;
 
 NOTIFYICONDATAW nid ={ sizeof(nid) };
@@ -95,12 +95,15 @@ class IconBright
     HICON hID;
     HICON hIN;
     HICON hIB;
-    float rmin;
-    float rmax;
+    const float rmin;
+    const float rmax;
+    const float darkRange;
+    const float brightRange;
 
 public:
 
-    IconBright(HICON hIconD, HICON hIconN, HICON hIconB) : rmin(MIN_AC_RANGE), rmax(MAX_AC_RANGE)
+    IconBright(HICON hIconD, HICON hIconN, HICON hIconB) :
+    rmin(MIN_AC_RANGE), rmax(MAX_AC_RANGE), darkRange(MIN_AC_RANGE/100), brightRange(MAX_AC_RANGE/100)
     {
         hID = hIconD;
         hIN = hIconN;
@@ -115,9 +118,6 @@ HICON IconBright::IconSelector(float brightnessFactor) const
     if (brightnessFactor < rmin)  return hID;
     if (brightnessFactor > rmax)  return hIB;
 
-    float darkRange = rmin / 100;
-    float brightRange = rmax / 100;
-
     if (brightnessFactor >= rmin && brightnessFactor < darkRange )
         return hID;
     if (brightnessFactor >= darkRange && brightnessFactor < brightRange )
@@ -128,6 +128,20 @@ HICON IconBright::IconSelector(float brightnessFactor) const
 
 class Normalizator
 {
+    // Filter status
+    float x_prev;
+    float y_prev;
+    float scaled;
+
+    // Removing the permanent component
+    inline float remove_dc(float x, float alpha)
+    {
+        float y = x - x_prev + alpha * y_prev;
+        x_prev = x;
+        y_prev = y;
+        return y;
+    }
+
 public:
     Normalizator()  : x_prev(0.0f), y_prev(0.0f), scaled(0.0f)
     {
@@ -142,21 +156,6 @@ public:
     }
 
     operator float() { return scaled; }
-
-private:
-    // Filter status
-    float x_prev;
-    float y_prev;
-    float scaled;
-
-    // Removing the permanent component
-    inline float remove_dc(float x, float alpha)
-    {
-        float y = x - x_prev + alpha * y_prev;
-        x_prev = x;
-        y_prev = y;
-        return y;
-    }
 };
 
 void inline static UpdateTrayIcon(HICON hIcon)
@@ -173,9 +172,9 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
                       Red(hIconWriteD, hIconWrite, hIconWriteB ),
                       Yellow(hIconRWd, hIconRW, hIconRWb);
     static float vRead = 0.f, vWrite = 0.f;
-    PDH_HQUERY hQueryR, hQueryW;
-    PDH_HCOUNTER hCounterRead, hCounterWrite;
-    PDH_FMT_COUNTERVALUE valueRead, valueWrite;
+    static PDH_HQUERY hQueryR, hQueryW;
+    static PDH_HCOUNTER hCounterRead, hCounterWrite;
+    static PDH_FMT_COUNTERVALUE valueRead, valueWrite;
 
     swprintf_s(readCounterPath, L"%s%s%s", L"\\PhysicalDisk(", szwSelectedDisk, L")\\Disk Read Bytes/sec");
     swprintf_s(writeCounterPath, L"%s%s%s", L"\\PhysicalDisk(", szwSelectedDisk, L")\\Disk Write Bytes/sec");
