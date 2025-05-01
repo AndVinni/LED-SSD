@@ -197,13 +197,13 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
         vRead = (float)valueRead.doubleValue;
         vWrite = (float)valueWrite.doubleValue;
 
-        if (vRead > 0.f && vWrite > 0.f)    // Reads and writes
+        if (vRead > 0.f && vWrite > 0.f)                    // Reads and writes
         {
             float meanValueRW = std::abs(vRead) > std::abs(vWrite) ? vRead : vWrite;
             levelRW.Preparation(meanValueRW, 0.001f);
             UpdateTrayIcon(Yellow.IconSelector(levelRW));
         }
-        else if (vRead > 0.f)               // Only reads
+        else if (vRead > 0.f)                               // Only reads
         {
             levelR.Preparation(vRead, 0.001f);
             UpdateTrayIcon(Green.IconSelector(levelR));
@@ -212,7 +212,7 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
                 logMessage(std::to_wstring(levelR), nstr);
             #endif
         }
-        else if (vWrite > 0.f)              // Only writes
+        else if (vWrite > 0.f)                              // Only writes
         {
             levelW.Preparation(vWrite, 0.001f);
             UpdateTrayIcon(Red.IconSelector(levelW));
