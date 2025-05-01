@@ -24,20 +24,21 @@
 #include <shellapi.h>
 #include <wtsapi32.h>
 #include <stdio.h>
+#include <cstdlib>
 
 #ifdef _DEBUG
     #include <fstream>
     #include <iostream>
+    #include <string>
 #endif
 #pragma comment(lib, "pdh.lib")         // Working with counters
 #pragma comment(lib, "Wtsapi32.lib" )   // Working with the session
 
 #define hKey HKEY_CURRENT_USER
 
-ULONG_PTR gdiplusToken;
 // GUID is the unique identifier of the icon.
 class __declspec(uuid("8a002844-4745-4336-a9a1-98ff80bce4c2")) AppIcon;
-// »м€ мьютекса
+// Name of the mutex
 const wchar_t *szwMutex = L"36д85б51e72д4504997ф28е0е243101с";
 const wchar_t *szWindowClass = L"LED-SSD";
 const wchar_t *szPause = L"Pause";
@@ -75,7 +76,7 @@ void ShowContextMenu(HWND hwnd, POINT pt);
 
 #ifdef _DEBUG
     std::wstring nstr = L"";
-    void logMessage(const std::wstring& message, const std::wstring& par)
+    static void logMessage(const std::wstring& message, const std::wstring& par)
     {
         std::wofstream logFile("LED_SSD.log", std::ios_base::app); // Open log file in append mode
         if (logFile.is_open())
@@ -106,10 +107,10 @@ public:
         hIB = hIconB;
     }
 
-    HICON IconSelector(float brightnessFactor);
+    HICON IconSelector(float brightnessFactor) const;
 };
 
-HICON IconBright::IconSelector(float brightnessFactor)
+HICON IconBright::IconSelector(float brightnessFactor) const
 {
     if (brightnessFactor < rmin)  return hID;
     if (brightnessFactor > rmax)  return hIB;
@@ -171,6 +172,7 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
     static IconBright Green(hIconReadD, hIconRead, hIconReadB ), 
                       Red(hIconWriteD, hIconWrite, hIconWriteB ),
                       Yellow(hIconRWd, hIconRW, hIconRWb);
+    static float vRead = 0.f, vWrite = 0.f;
     PDH_HQUERY hQueryR, hQueryW;
     PDH_HCOUNTER hCounterRead, hCounterWrite;
     PDH_FMT_COUNTERVALUE valueRead, valueWrite;
@@ -193,22 +195,27 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
         PdhGetFormattedCounterValue(hCounterRead, PDH_FMT_DOUBLE, NULL, &valueRead);
         PdhGetFormattedCounterValue(hCounterWrite, PDH_FMT_DOUBLE, NULL, &valueWrite);
 
-        if (valueRead.doubleValue > 0.f && valueWrite.doubleValue > 0.f)    // Reads and writes
+        vRead = (float)valueRead.doubleValue;
+        vWrite = (float)valueWrite.doubleValue;
+
+        if (vRead > 0.f && vWrite > 0.f)    // Reads and writes
         {
-            float meanValueRW = (valueRead.doubleValue + valueWrite.doubleValue) / 2.f;
+            float meanValueRW = std::abs(vRead) > std::abs(vWrite) ? vRead : vWrite;
             levelRW.Preparation(meanValueRW, 0.001f);
             UpdateTrayIcon(Yellow.IconSelector(levelRW));
         }
-        else if (valueRead.doubleValue > 0.f)               // Only reads
+        else if (vRead > 0.f)               // Only reads
         {
-            float meanValueR = (valueRead.doubleValue);
-            levelR.Preparation(meanValueR, 0.001f);
+            levelR.Preparation(vRead, 0.001f);
             UpdateTrayIcon(Green.IconSelector(levelR));
+            #ifdef _DEBUG
+                #pragma message( "-> A log file will be created!")
+                logMessage(std::to_wstring(levelR), nstr);
+            #endif
         }
-        else if (valueWrite.doubleValue > 0.f)              // Only writes
+        else if (vWrite > 0.f)              // Only writes
         {
-            float meanValueW = (valueWrite.doubleValue);
-            levelW.Preparation(meanValueW, 0.001f);
+            levelW.Preparation(vWrite, 0.001f);
             UpdateTrayIcon(Red.IconSelector(levelW));
         }
         else                                                // Smokes
@@ -468,10 +475,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_ LPWSTR    lpCmdLine,
     _In_ int       nCmdShow)
 {
-#ifdef _DEBUG
-    try
-    {
-#endif
+    #ifdef _DEBUG
+        try
+        {
+    #endif
         hThis = GetCurrentProcess(); // This one
 
         // The user's language in the system
@@ -629,14 +636,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
         WTSUnRegisterSessionNotification(window);
 
-#ifdef _DEBUG
-    }
-    catch (...)
-    {
-        MessageBoxEx(NULL, L"Something went wrong...", L"Houston, we have a problem!", MB_OK, 0);
-        return 1;
-    }
-#endif
+    #ifdef _DEBUG
+        }
+        catch (...)
+        {
+            MessageBoxEx(NULL, L"Something went wrong...", L"Houston, we have a problem!", MB_OK, 0);
+            return 1;
+        }
+    #endif
     return 0;
 }
 

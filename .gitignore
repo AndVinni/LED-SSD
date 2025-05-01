@@ -5,12 +5,14 @@
 *.zip
 *.7z
 *.xlsx
+*.log
 
 # Compiled Object files
 Setup/
 LED_SSD/
 x64/
 Win32/
+IconPrep/
 *.slo
 *.lo
 *.o
