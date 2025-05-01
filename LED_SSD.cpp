@@ -67,10 +67,10 @@ HANDLE monitorThread = NULL;
 HANDLE ghExitEvent = NULL;
 HANDLE hThis=NULL;
 DWORD  dwThreadId = 0;
-enum class APP : short { CHECK, UNLOAD, LOAD };
-enum class THREAD : short { CHECK, PAUSE, RUN };
-static APP CtrlAutoLoad(APP);
-static THREAD CtrlThread(THREAD);
+typedef enum class APP : short { Check, Unload, Load} Application;
+typedef enum class THREAD : short { Check, Pause, Run } Thread;
+static Application CtrlAutoLoad(Application);
+static Thread CtrlThread(Thread);
 bool UserLocale_RU;                         // Localization is either Russian or English
 void ShowContextMenu(HWND hwnd, POINT pt);
 
@@ -245,10 +245,10 @@ void ShowContextMenu(HWND hwnd, POINT pt)
     }
 }
 
-static APP CtrlAutoLoad(APP mode)  
+static Application CtrlAutoLoad(Application mode)
 {   // Auto-upload management via the registry
 
-    static APP state = APP::UNLOAD;
+    static Application state = Application::Unload;
     static wchar_t szwSubKey[MAX_PATH] = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
     static wchar_t szwPath[MAX_PATH];
     static wchar_t szwKeyValue[MAX_PATH];
@@ -258,7 +258,7 @@ static APP CtrlAutoLoad(APP mode)
 
     switch (mode)
     {
-    case APP::CHECK: // Checking the auto-upload status
+    case Application::Check: // Checking the auto-upload status
         {   // Opening the registry branch
             lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_READ, &hKeyDescriptor);
             if (lResult == ERROR_SUCCESS)
@@ -269,25 +269,25 @@ static APP CtrlAutoLoad(APP mode)
                     GetModuleFileName(NULL, szwPath, MAX_PATH);
                     if (wcscmp(szwKeyValue, szwPath) == 0)
                     {   // There is an entry in the registry and it matches the current position of the program
-                        state = APP::LOAD;
+                        state = Application::Load;
                         break;
                     }
                 }
                 RegCloseKey(hKeyDescriptor);
             }
-            state = APP::UNLOAD;
+            state = Application::Unload;
         }
     break;
-    case APP::UNLOAD:   // Deleting Registry startup entry
+    case Application::Unload:   // Deleting Registry startup entry
         lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_ALL_ACCESS, &hKeyDescriptor);
         if (lResult == ERROR_SUCCESS)
         {
             RegDeleteKeyValue(hKey, szwSubKey, szWindowClass);
             RegCloseKey(hKeyDescriptor);
-            state = APP::UNLOAD;
+            state = Application::Unload;
         }
     break;
-    case APP::LOAD: // Creating a registry startup entry
+    case Application::Load: // Creating a registry startup entry
         lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_ALL_ACCESS, &hKeyDescriptor);
         if ( lResult == ERROR_SUCCESS  )
         { 
@@ -295,17 +295,17 @@ static APP CtrlAutoLoad(APP mode)
             GetModuleFileName(NULL, szwPath, MAX_PATH);
             RegSetValueEx(hKeyDescriptor, szWindowClass, NULL, REG_SZ, (LPBYTE)szwPath, MAX_PATH);
             RegCloseKey(hKeyDescriptor);
-            state = APP::LOAD;
+            state = Application::Load;
         }
     break;
     }
     return state;
 }
 
-static THREAD CtrlThread(THREAD mode)
+static Thread CtrlThread(Thread mode)
 {   // Fixing the pause status in the registry
 
-    static THREAD state = THREAD::RUN;
+    static Thread state = Thread::Run;
     static wchar_t szwSubKey[MAX_PATH] = L"";
     static HKEY hKeyDescriptor = hKey;
     LSTATUS lResult = 0;
@@ -317,7 +317,7 @@ static THREAD CtrlThread(THREAD mode)
 
     switch (mode)
     {
-    case THREAD::CHECK:
+    case Thread::Check:
         {   // Opening the registry branch
             lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_READ, &hKeyDescriptor);
             if (lResult == ERROR_SUCCESS)
@@ -326,15 +326,15 @@ static THREAD CtrlThread(THREAD mode)
                 if (lResult == ERROR_SUCCESS) // Got the registry value
                     if (dwKeyValue == 1)
                     {   
-                        state = THREAD::PAUSE;
+                        state = Thread::Pause;
                         break;
                     }
                 RegCloseKey(hKeyDescriptor);
             }
-            state = THREAD::RUN;
+           state = Thread::Run;
         }
     break;
-    case THREAD::PAUSE:
+    case Thread::Pause:
         lResult = RegCreateKeyEx(hKey, szwSubKey, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hKeyDescriptor, NULL);
         if (lResult == ERROR_SUCCESS)
         {
@@ -344,20 +344,22 @@ static THREAD CtrlThread(THREAD mode)
                 dwKeyValue = 1;
                 RegSetValueEx(hKeyDescriptor, szPause, NULL, REG_DWORD, (const BYTE*)&dwKeyValue, size);
                 RegCloseKey(hKeyDescriptor);
-                state = THREAD::PAUSE;
+                state = Thread::Pause;
+                break;
             }
         }
-        state = THREAD::RUN;
+        state = Thread::Run;
     break;
-    case THREAD::RUN:
+    case Thread::Run:
         lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_ALL_ACCESS, &hKeyDescriptor);
         if (lResult == ERROR_SUCCESS)
         {
             RegDeleteKeyValue(hKey, szwSubKey, szPause);
             RegCloseKey(hKeyDescriptor);
-            state = THREAD::RUN;
+            state = Thread::Run;
+            break;
         }
-        state = THREAD::PAUSE;
+        state = Thread::Pause;
     break;
     }
     return state;
@@ -381,10 +383,10 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
                 break;
 
                 case IDM_PAUSE:
-                    if (CtrlThread(THREAD::CHECK) == THREAD::RUN)
+                    if (CtrlThread(Thread::Check) == Thread::Run)
                     {
                         SuspendThread(monitorThread);
-                        CtrlThread(THREAD::PAUSE);
+                        CtrlThread(Thread::Pause);
                         SetPriorityClass(hThis, THREAD_MODE_BACKGROUND_BEGIN);
                         CheckMenuItem(hMenu, IDM_PAUSE, MF_CHECKED);
                         lstrcpy(nid.szTip, szTipP);
@@ -394,21 +396,21 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
                     {
                         lstrcpy(nid.szTip, szTip);
                         ResumeThread(monitorThread);
-                        CtrlThread(THREAD::RUN);
+                        CtrlThread(Thread::Run);
                         SetPriorityClass(hThis, THREAD_MODE_BACKGROUND_END);
                         CheckMenuItem(hMenu, IDM_PAUSE, MF_UNCHECKED);
                     }
                     break;
 
                 case IDM_AUTOLOAD:
-                    if (CtrlAutoLoad(APP::CHECK) == APP::LOAD)
+                    if (CtrlAutoLoad(Application::Check) == Application::Load)
                     {
-                        CtrlAutoLoad(APP::UNLOAD);
+                        CtrlAutoLoad(Application::Unload);
                         CheckMenuItem(hMenu, IDM_AUTOLOAD, MF_UNCHECKED);
                     }
                     else
                     {
-                        CtrlAutoLoad(APP::LOAD);
+                        CtrlAutoLoad(Application::Load);
                         CheckMenuItem(hMenu, IDM_AUTOLOAD, MF_CHECKED);
                     }
                 break;
@@ -437,14 +439,14 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
             switch (wParam)
             {
             case WTS_SESSION_LOCK:
-                if (CtrlThread(THREAD::CHECK) == THREAD::RUN)
+                if (CtrlThread(Thread::Check) == Thread::Run)
                 {
                     SuspendThread(monitorThread);
                     SetPriorityClass(hThis, THREAD_MODE_BACKGROUND_BEGIN);
                 }
             break;
             case WTS_SESSION_UNLOCK:
-                if (CtrlThread(THREAD::CHECK) != THREAD::PAUSE)
+                if (CtrlThread(Thread::Check) != Thread::Pause)
                 {
                     ResumeThread(monitorThread);
                     SetPriorityClass(hThis, THREAD_MODE_BACKGROUND_END);
@@ -600,13 +602,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
 
         // Checking the auto-upload status
-        if (CtrlAutoLoad(APP::CHECK) == APP::LOAD)
+        if (CtrlAutoLoad(Application::Check) == Application::Load)
             CheckMenuItem(hMenu, IDM_AUTOLOAD, MF_CHECKED);
         else
             CheckMenuItem(hMenu, IDM_AUTOLOAD, MF_UNCHECKED);
 
         // Checking the pause status
-        if (CtrlThread(THREAD::CHECK) == THREAD::PAUSE)
+        if (CtrlThread(Thread::Check) == Thread::Pause)
         {
             if (monitorThread)
             {
