@@ -6,6 +6,7 @@
 *.7z
 *.xlsx
 *.log
+clang-format
 
 # Compiled Object files
 Setup/

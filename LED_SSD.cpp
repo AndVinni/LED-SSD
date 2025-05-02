@@ -6,7 +6,7 @@
 //                  
 //                          LED-SSD
 //                           
-//          WIN7 and younger, x32, x64, C/C++ 17, RU, EN, unicode             
+//          WIN7 and greater, x32, x64, C/C++ 17, RU, EN, unicode             
 //                          
 // "Remember everything" = 30 years of pause in programming for Windows in C++
 //                  (C) Vinni, April 2025
@@ -25,6 +25,7 @@
 #include <wtsapi32.h>
 #include <stdio.h>
 #include <cstdlib>
+#include <VersionHelpers.h>
 
 #ifdef _DEBUG
     #include <fstream>
@@ -115,15 +116,19 @@ public:
 
 HICON IconBright::IconSelector(float brightnessFactor) const
 {
-    if (brightnessFactor < rmin)  return hID;
-    if (brightnessFactor > rmax)  return hIB;
+    if (brightnessFactor < rmin)
+        return hID;  // Removing brightness beyond the minimum range
 
-    if (brightnessFactor >= rmin && brightnessFactor < darkRange )
-        return hID;
-    if (brightnessFactor >= darkRange && brightnessFactor < brightRange )
-        return hIN;
-    if (brightnessFactor >= brightRange && brightnessFactor <= rmax)
-        return hIB;
+    if (brightnessFactor > rmax)
+        return hIB;  // Removing brightness beyond the maximum range
+
+    if (brightnessFactor < darkRange)
+        return hID;  // Brightness in the dark area
+
+    if (brightnessFactor < brightRange)
+        return hIN; // Brightness in the middle area
+
+    return hIB;  // Brightness in the light area
 }
 
 class Normalizator
@@ -133,7 +138,7 @@ class Normalizator
     float y_prev;
     float scaled;
 
-    // Removing the permanent component
+    // Removing the DC component
     inline float remove_dc(float x, float alpha)
     {
         float y = x - x_prev + alpha * y_prev;
@@ -147,12 +152,10 @@ public:
     {
     }
 
-    // Main function: DC removal + scaling
+    // DC removal
     inline float Preparation(float value, float alpha)
     {
-        float gb = value < 0.0f ? 0.0f : value / 1073741824.0f; // gb/sec
-        float no_dc = remove_dc(gb, alpha);
-        return scaled = no_dc;
+        return scaled = remove_dc((value < 0.0f ? 0.0f : value), alpha);
     }
 
     operator float() { return scaled; }
@@ -194,8 +197,8 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
         PdhGetFormattedCounterValue(hCounterRead, PDH_FMT_DOUBLE, NULL, &valueRead);
         PdhGetFormattedCounterValue(hCounterWrite, PDH_FMT_DOUBLE, NULL, &valueWrite);
 
-        vRead = (float)valueRead.doubleValue;
-        vWrite = (float)valueWrite.doubleValue;
+        vRead = (float)(valueRead.doubleValue / 1073741824.0); // gb/sec;
+        vWrite = (float)(valueWrite.doubleValue / 1073741824.0); 
 
         if (vRead > 0.f && vWrite > 0.f)                    // Reads and writes
         {
@@ -327,11 +330,11 @@ static Thread CtrlThread(Thread mode)
                     if (dwKeyValue == 1)
                     {   
                         state = Thread::Pause;
-                        break;
+                        break;                  // return from switch
                     }
                 RegCloseKey(hKeyDescriptor);
             }
-           state = Thread::Run;
+           state = Thread::Run;                 // Negative logic
         }
     break;
     case Thread::Pause:
@@ -345,10 +348,10 @@ static Thread CtrlThread(Thread mode)
                 RegSetValueEx(hKeyDescriptor, szPause, NULL, REG_DWORD, (const BYTE*)&dwKeyValue, size);
                 RegCloseKey(hKeyDescriptor);
                 state = Thread::Pause;
-                break;
+                break; 
             }
         }
-        state = Thread::Run;
+        state = Thread::Run; 
     break;
     case Thread::Run:
         lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_ALL_ACCESS, &hKeyDescriptor);
@@ -547,7 +550,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_SHOWTIP | NIF_GUID;
         nid.guidItem = __uuidof(AppIcon);
         nid.dwInfoFlags = NIIF_USER;
-        nid.dwState = NIS_SHAREDICON;
+        if (IsWindows8OrGreater())
+        {
+            nid.uFlags |= NIF_STATE;
+            nid.dwState = NIS_SHAREDICON;
+            nid.dwStateMask = NIS_SHAREDICON;
+        }
         nid.hBalloonIcon = hIconApp;
         nid.uCallbackMessage = WMAPP_NOTIFYCALLBACK;
         // Notification texts
@@ -557,31 +565,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         LoadString(hInstance, IDS_ACT, nid.szInfoTitle, ARRAYSIZE(nid.szInfoTitle));
         LoadString(hInstance, IDS_INFO, nid.szInfo, ARRAYSIZE(nid.szInfo));
         // Permanent animation icons
-        nid.dwState = NIS_HIDDEN | NIS_SHAREDICON;
         nid.hIcon = hIconIdle;
         Shell_NotifyIcon(NIM_ADD, &nid);
-        nid.hIcon = hIconPause;
-        Shell_NotifyIcon(NIM_ADD, &nid);
-        // Changeable animation icons
-        nid.hIcon = hIconReadD;
-        Shell_NotifyIcon(NIM_ADD, &nid);
-        nid.hIcon = hIconRead;
-        Shell_NotifyIcon(NIM_ADD, &nid);
-        nid.hIcon = hIconReadB;
-        Shell_NotifyIcon(NIM_ADD, &nid);
-        nid.hIcon = hIconWriteD;
-        Shell_NotifyIcon(NIM_ADD, &nid);
-        nid.hIcon = hIconWrite;
-        Shell_NotifyIcon(NIM_ADD, &nid);
-        nid.hIcon = hIconWriteB;
-        Shell_NotifyIcon(NIM_ADD, &nid);
-        nid.hIcon = hIconRWd;
-        Shell_NotifyIcon(NIM_ADD, &nid);
-        nid.hIcon = hIconRW;
-        Shell_NotifyIcon(NIM_ADD, &nid);
-        nid.hIcon = hIconRWb;
-        Shell_NotifyIcon(NIM_ADD, &nid);
-        // Notification version
         nid.uVersion = NOTIFYICON_VERSION_4;
         Shell_NotifyIcon(NIM_SETVERSION, &nid);
 
