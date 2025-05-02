@@ -167,6 +167,11 @@ void inline static UpdateTrayIcon(HICON hIcon)
     Shell_NotifyIcon(NIM_MODIFY, &nid);
 }
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable:4100)  // we suppress the C1400 only here
+#endif
+
 static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
 {   // Monitoring disk activity via system disk performance counters
 
@@ -228,6 +233,10 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
     PdhCloseQuery(hQueryW);
     return 0;
 }
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 void ShowContextMenu(HWND hwnd, POINT pt)
 {
@@ -474,6 +483,11 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
     return 0;
 }
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable:4100)  // we suppress the C1400 only here
+#endif
+
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
     _In_ LPWSTR    lpCmdLine,
@@ -490,8 +504,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             UserLocale_RU = wcscmp(LocaleName, L"ru-RU") == 0 ? TRUE : FALSE;
 
         // Blocking the launch of the second instance of the program
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable:4189)  // “local variable is initialized but not referenced”
+#endif
         HANDLE mutex = CreateMutexEx(0, szwMutex, CREATE_MUTEX_INITIAL_OWNER, READ_CONTROL);
-
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
         if (GetLastError() == ERROR_ALREADY_EXISTS)
         {
             if (UserLocale_RU)
@@ -632,5 +652,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     #endif
     return 0;
 }
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 // EOF
