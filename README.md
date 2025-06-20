@@ -1,4 +1,7 @@
 The disk activity indicator.
+
+MIT License
+
 It is used for quick assessment of disk loading.
 Replaces a missing or invisible hardware indicator.
 - Compact, intuitive, used Windows API level, and C++17.

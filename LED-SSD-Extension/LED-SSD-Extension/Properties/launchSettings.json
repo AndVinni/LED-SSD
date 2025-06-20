@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "LED-SSD-Extension (Package)": {
+      "commandName": "MsixPackage",
+      "doNotLaunchApp": true
+    },
+    "LED-SSD-Extension (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
