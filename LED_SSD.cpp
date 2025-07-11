@@ -18,6 +18,16 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOCOMM
 
+
+#ifndef PRODUCT_IOTUAPCOMMERCIAL
+#  define PRODUCT_IOTUAPCOMMERCIAL  0x00000083
+#endif
+
+#ifndef PRODUCT_IOTENTERPRISE_S
+#  define PRODUCT_IOTENTERPRISE_S   0x000000BF
+#endif
+
+
 #include "resource.h"
 #include <windows.h>
 #include <pdh.h>
@@ -26,6 +36,7 @@
 #include <stdio.h>
 #include <cstdlib>
 #include <VersionHelpers.h>
+#include <sysinfoapi.h>
 
 #ifdef _DEBUG
     #include <fstream>
@@ -483,6 +494,36 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
     return 0;
 }
 
+static bool IsEmbeddedOrIoT()
+{
+    DWORD dwType = 0;
+    // Передаём номера версии вашей минимальной целевой ОС (например, 10.0.0)
+    if (SUCCEEDED(GetProductInfo(
+        6, 3, 0, 0,    // Major, Minor, SPMajor, SPMinor
+        &dwType)))
+    {
+        switch (dwType)
+        {
+                // IoT Core
+            case PRODUCT_IOTUAP:            // 0x7B
+            case PRODUCT_IOTUAPCOMMERCIAL:  // 0x83
+                return true;
+
+                // IoT Enterprise
+            case PRODUCT_IOTENTERPRISE:     // 0xBC (188)
+            case PRODUCT_IOTENTERPRISE_S:   // 0xBF (191)
+                return true;
+
+                // (можно добавить и другие Embedded?SKU, если нужно)
+            case PRODUCT_EMBEDDED_A:
+            case PRODUCT_EMBEDDED_E:
+            case PRODUCT_EMBEDDED_INDUSTRY:
+                return true;
+        }
+    }
+    return false;
+}
+
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable:4100)  // we suppress the C1400 only here
@@ -560,17 +601,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         // Register a window to receive session messages
         WTSRegisterSessionNotification(window, NOTIFY_FOR_THIS_SESSION);
 
-        // Creating a monitoring flow
-        if ((monitorThread = CreateThread(NULL, 65536, MonitorDiskActivity, NULL, 0, &dwThreadId)))
-            SetPriorityClass(monitorThread, THREAD_PRIORITY_ABOVE_NORMAL );
-
         // Creating a notification context
         nid.cbSize = sizeof(nid);
         nid.hWnd = window;
-        nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_SHOWTIP | NIF_GUID;
+        nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | /*NIF_SHOWTIP |*/ NIF_GUID;
         nid.guidItem = __uuidof(AppIcon);
         nid.dwInfoFlags = NIIF_USER;
-        if (IsWindows8OrGreater())
+        if (!IsEmbeddedOrIoT())
         {
             nid.uFlags |= NIF_STATE;
             nid.dwState = NIS_SHAREDICON;
@@ -605,6 +642,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             ModifyMenu(hMenu, IDM_EXIT, MF_STRING | MF_ENABLED, IDM_EXIT, szExitMenu);
             Shell_NotifyIcon(NIM_MODIFY, &nid);
         }
+
+        // Creating a monitoring flow
+        if ((monitorThread = CreateThread(NULL, 65536, MonitorDiskActivity, NULL, 0, &dwThreadId)))
+            SetPriorityClass(monitorThread, THREAD_PRIORITY_ABOVE_NORMAL);
 
         // Checking the auto-upload status
         if (CtrlAutoLoad(Application::Check) == Application::Load)
