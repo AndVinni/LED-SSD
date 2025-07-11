@@ -604,12 +604,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         // Creating a notification context
         nid.cbSize = sizeof(nid);
         nid.hWnd = window;
-        nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | /*NIF_SHOWTIP |*/ NIF_GUID;
+        nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_GUID;
         nid.guidItem = __uuidof(AppIcon);
         nid.dwInfoFlags = NIIF_USER;
         if (!IsEmbeddedOrIoT())
         {
-            nid.uFlags |= NIF_STATE;
+            nid.uFlags |= NIF_STATE | NIF_SHOWTIP;
             nid.dwState = NIS_SHAREDICON;
             nid.dwStateMask = NIS_SHAREDICON;
         }
