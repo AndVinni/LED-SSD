@@ -33,15 +33,6 @@
 #define NOCOMM
 
 
-#ifndef PRODUCT_IOTUAPCOMMERCIAL
-#  define PRODUCT_IOTUAPCOMMERCIAL  0x00000083
-#endif
-
-#ifndef PRODUCT_IOTENTERPRISE_S
-#  define PRODUCT_IOTENTERPRISE_S   0x000000BF
-#endif
-
-
 #include "resource.h"
 #include <windows.h>
 #include <pdh.h>
@@ -521,11 +512,9 @@ static bool IsEmbeddedOrIoT()
         case PRODUCT_IOTUAP:            // 0x7B
         case PRODUCT_IOTOS:             // 0xB9
         case PRODUCT_IOTEDGEOS:         // 0xBB
-
             // IoT Enterprise
         case PRODUCT_IOTENTERPRISE:     // 0xBC
         case PRODUCT_IOTENTERPRISES:    // 0xBF
-
             // Embedded Standard/Industry
         case PRODUCT_EMBEDDED:                  // 0x41
         case PRODUCT_EMBEDDED_A:                // 0x58
@@ -534,13 +523,11 @@ static bool IsEmbeddedOrIoT()
         case PRODUCT_EMBEDDED_INDUSTRY_A:       // 0x56
         case PRODUCT_EMBEDDED_INDUSTRY_E:       // 0x5B
         case PRODUCT_EMBEDDED_INDUSTRY_A_E:     // 0x5C
-
             // Embedded Evaluation
         case PRODUCT_EMBEDDED_EVAL:             // 0x6B
         case PRODUCT_EMBEDDED_E_EVAL:           // 0x6C
         case PRODUCT_EMBEDDED_INDUSTRY_EVAL:    // 0x69
         case PRODUCT_EMBEDDED_INDUSTRY_E_EVAL:  // 0x6A
-
             // Embedded Automotive / ThinPC / Solution
         case PRODUCT_EMBEDDED_AUTOMOTIVE:       // 0x55
         case PRODUCT_THINPC:                    // 0x57
@@ -556,9 +543,9 @@ static bool IsEmbeddedOrIoT()
 void ThisWindowsVersionNotSupported(bool ru)
 {
     if (ru)
-        MessageBoxEx(NULL, L"Эта версия Windows не поддерживает расширенные функции интерфейса", szwVnimanie, MB_OK, 0);
+        MessageBoxEx(NULL, L"Эта версия Windows не поддерживает расширенные функции области уведомлений панели задач", szwVnimanie, MB_OK, 0);
     else
-        MessageBoxEx(NULL, L"This version of Windows does not support advanced interface features.", szwWarning, MB_OK, 0);
+        MessageBoxEx(NULL, L"This version of Windows does not support advanced functions of the Taskbar Notification Area", szwWarning, MB_OK, 0);
 }
 
 #ifdef _MSC_VER
