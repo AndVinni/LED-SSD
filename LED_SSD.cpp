@@ -1,14 +1,28 @@
-// A utility for indicating the reading and writing of the Windows disk subsystem.
+﻿// A utility for indicating the reading and writing of the Windows disk subsystem.
 // Replacing the hardware LED, for rapid evaluation of disk loading.
 // The indicator is located on the taskbar.
 // Green - reading, yellow - reading and writing, red - writing.
 // Each color has 3 brightness gradations, depending on the speed change.
 //                  
-//                          LED-SSD
+//       ██████    █████████ ████████           ████ █   ████ █ ████████   
+//        ▓██▓▓▓    ▓██▓▓▓▓█▓ ▓██▓▓▓██         ██▓▓▓██▓ ██▓▓▓██▓ ▓██▓▓▓██   
+//         ██▓▒▒▒    ██▓▒▒▒█▓▒ ██▓▒▒▒██        ██▓▒▒▒█▓▒██▓▒▒▒█▓▒ ██▓▒▒▒██   
+//         ██▓▒░░░   ██▓▒█░░▓▒░██▓▒░░░██       ███▒░░█▓▒███▒░░█▓▒░██▓▒░░░██   
+//         ██▓▒░     ██▓▒█▓  ▒░██▓▒░  ██▓       ███░  ▓▒░███░  ▓▒░██▓▒░  ██▓  
+//         ██▓▒░     █████▓▒  ░██▓▒░  ██▓▒       ███   ▒░ ███   ▒░██▓▒░  ██▓▒ 
+//         ██▓▒░     ██▓▓█▓▒░  ██▓▒░  ██▓▒░       ███   ░  ███   ░██▓▒░  ██▓▒░
+//         ██▓▒░     ██▓▒█▓▒░  ██▓▒░  ██▓████  █   ███  █   ███   ██▓▒░  ██▓▒░
+//         ██▓▒░ █   ██▓▒░▓█░  ██▓▒░ ██▓▓▒▓▓▓▓ █▓   ██▓ █▓   ██▓  ██▓▒░ ██▓▓▒░
+//         ██▓▒░ █▓  ██▓▒░ █▓  ██▓▒░██▓▓▒▒░▒▒▒▒██▒  ██▓▒██▒  ██▓▒ ██▓▒░██▓▓▒▒░
+//       █████████▓█████████▓████████▓▓▒▒░░ ░░░█▓████▓▓▒█▓████▓▓████████▓▓▒▒░░
+//        ▓▓▓▓▓▓▓▓▓▒▓▓▓▓▓▓▓▓▓▒▓▓▓▓▓▓▓▓▒▒░░      ▓▒▓▓▓▓▒▒░▓▒▓▓▓▓▒▒▓▓▓▓▓▓▓▓▒▒░░ 
+//         ▒▒▒▒▒▒▒▒▒░▒▒▒▒▒▒▒▒▒░▒▒▒▒▒▒▒▒░░        ▒░▒▒▒▒░░ ▒░▒▒▒▒░░▒▒▒▒▒▒▒▒░░  
+//          ░░░░░░░░░ ░░░░░░░░░ ░░░░░░░░          ░ ░░░░   ░ ░░░░  ░░░░░░░░   
+
 //                           
 //          WIN7 and greater, x32, x64, C/C++ 17, RU, EN, unicode             
 //                          
-// "Remember everything" = 30 years of pause in programming for Windows in C++
+//   "Total Recall" = 30 years of pause in programming for Windows in C++
 //                  (C) Vinni, April 2025
 //
 
@@ -36,7 +50,7 @@
 #include <stdio.h>
 #include <cstdlib>
 #include <VersionHelpers.h>
-#include <sysinfoapi.h>
+
 
 #ifdef _DEBUG
     #include <fstream>
@@ -48,10 +62,10 @@
 
 #define hKey HKEY_CURRENT_USER
 
-// GUID is the unique identifier of the icon.
-class __declspec(uuid("8a002844-4745-4336-a9a1-98ff80bce4c2")) AppIcon;
+// ID is the unique identifier of the icon.
+constexpr UINT MY_TRAY_ICON_ID = 48231;
 // Name of the mutex
-const wchar_t *szwMutex = L"36�85�51e72�4504997�28�0�243101�";
+const wchar_t *szwMutex = L"36д85б51e72д4504997ф28е0е243101с";
 const wchar_t *szWindowClass = L"LED-SSD";
 const wchar_t *szPause = L"Pause";
       wchar_t  szTip[128] = L"";
@@ -60,10 +74,8 @@ const wchar_t* szwSelectedDisk = L"_Total";        // Activity of all disks
 wchar_t readCounterPath[PDH_MAX_COUNTER_PATH];
 wchar_t writeCounterPath[PDH_MAX_COUNTER_PATH];
 wchar_t LocaleName[LOCALE_NAME_MAX_LENGTH];
-const wchar_t* szwAllRun = L"Application alredy run";
 const wchar_t* szwWarning = L"Warning!";
-const wchar_t* szwUzheRabotaet = L"��������� ��� ��������";
-const wchar_t* szwVnimanie = L"��������!";
+const wchar_t* szwVnimanie = L"Внимание!";
 UINT const WMAPP_NOTIFYCALLBACK = WM_APP + 1;
 HICON hIconIdle, hIconApp, hIconPause,  hIconReadD, hIconRead, hIconReadB, 
                                         hIconWriteD, hIconWrite, hIconWriteB, 
@@ -226,10 +238,10 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
         {
             levelR.Preparation(vRead, 0.001f);
             UpdateTrayIcon(Green.IconSelector(levelR));
-            #ifdef _DEBUG
-                #pragma message( "-> A log file will be created!")
-                logMessage(std::to_wstring(levelR), nstr);
-            #endif
+            //#ifdef _DEBUG
+            //    #pragma message( "-> A log file will be created!")
+            //    logMessage(std::to_wstring(levelR), nstr);
+            //#endif
         }
         else if (vWrite > 0.f)                              // Only writes
         {
@@ -494,34 +506,59 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
     return 0;
 }
 
+
 static bool IsEmbeddedOrIoT()
 {
     DWORD dwType = 0;
-    // ������� ������ ������ ����� ����������� ������� �� (��������, 10.0.0)
+    // Transmitting the version numbers of your minimum target OS
     if (SUCCEEDED(GetProductInfo(
         6, 3, 0, 0,    // Major, Minor, SPMajor, SPMinor
         &dwType)))
     {
         switch (dwType)
         {
-                // IoT Core
-            case PRODUCT_IOTUAP:            // 0x7B
-            case PRODUCT_IOTUAPCOMMERCIAL:  // 0x83
-                return true;
+            // IoT Core
+        case PRODUCT_IOTUAP:            // 0x7B
+        case PRODUCT_IOTOS:             // 0xB9
+        case PRODUCT_IOTEDGEOS:         // 0xBB
 
-                // IoT Enterprise
-            case PRODUCT_IOTENTERPRISE:     // 0xBC (188)
-            case PRODUCT_IOTENTERPRISE_S:   // 0xBF (191)
-                return true;
+            // IoT Enterprise
+        case PRODUCT_IOTENTERPRISE:     // 0xBC
+        case PRODUCT_IOTENTERPRISES:    // 0xBF
 
-                // (����� �������� � ������ Embedded?SKU, ���� �����)
-            case PRODUCT_EMBEDDED_A:
-            case PRODUCT_EMBEDDED_E:
-            case PRODUCT_EMBEDDED_INDUSTRY:
-                return true;
+            // Embedded Standard/Industry
+        case PRODUCT_EMBEDDED:                  // 0x41
+        case PRODUCT_EMBEDDED_A:                // 0x58
+        case PRODUCT_EMBEDDED_E:                // 0x5A
+        case PRODUCT_EMBEDDED_INDUSTRY:         // 0x59
+        case PRODUCT_EMBEDDED_INDUSTRY_A:       // 0x56
+        case PRODUCT_EMBEDDED_INDUSTRY_E:       // 0x5B
+        case PRODUCT_EMBEDDED_INDUSTRY_A_E:     // 0x5C
+
+            // Embedded Evaluation
+        case PRODUCT_EMBEDDED_EVAL:             // 0x6B
+        case PRODUCT_EMBEDDED_E_EVAL:           // 0x6C
+        case PRODUCT_EMBEDDED_INDUSTRY_EVAL:    // 0x69
+        case PRODUCT_EMBEDDED_INDUSTRY_E_EVAL:  // 0x6A
+
+            // Embedded Automotive / ThinPC / Solution
+        case PRODUCT_EMBEDDED_AUTOMOTIVE:       // 0x55
+        case PRODUCT_THINPC:                    // 0x57
+        case PRODUCT_SOLUTION_EMBEDDEDSERVER:        // 0x38
+        case PRODUCT_SOLUTION_EMBEDDEDSERVER_CORE:   // 0x39
+
+        return true;
         }
     }
     return false;
+}
+
+void ThisWindowsVersionNotSupported(bool ru)
+{
+    if (ru)
+        MessageBoxEx(NULL, L"Эта версия Windows не поддерживает расширенные функции интерфейса", szwVnimanie, MB_OK, 0);
+    else
+        MessageBoxEx(NULL, L"This version of Windows does not support advanced interface features.", szwWarning, MB_OK, 0);
 }
 
 #ifdef _MSC_VER
@@ -534,11 +571,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _In_ LPWSTR    lpCmdLine,
     _In_ int       nCmdShow)
 {
+
     #ifdef _DEBUG
         try
         {
     #endif
-        hThis = GetCurrentProcess(); // This one
 
         // The user's language in the system
         if (GetUserDefaultLocaleName(LocaleName, LOCALE_NAME_MAX_LENGTH) != 0)
@@ -547,7 +584,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         // Blocking the launch of the second instance of the program
 #ifdef _MSC_VER
 #pragma warning(push)
-#pragma warning(disable:4189)  // �local variable is initialized but not referenced�
+#pragma warning(disable:4189)  //"local variable is initialized but not referenced"
 #endif
         HANDLE mutex = CreateMutexEx(0, szwMutex, CREATE_MUTEX_INITIAL_OWNER, READ_CONTROL);
 #ifdef _MSC_VER
@@ -556,9 +593,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         if (GetLastError() == ERROR_ALREADY_EXISTS)
         {
             if (UserLocale_RU)
-                MessageBoxEx(NULL, szwUzheRabotaet, szwVnimanie, MB_OK, 0);
+                MessageBoxEx(NULL, L"Программа уже запущена", szwVnimanie, MB_OK, 0);
             else
-                MessageBoxEx(NULL, szwAllRun, szwWarning, MB_OK, 0);
+                MessageBoxEx(NULL, L"Application alredy run", szwWarning, MB_OK, 0);
             return 1;
         }
 
@@ -594,7 +631,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
         // Creating the main window
         window = CreateWindowEx(WS_EX_APPWINDOW, szWindowClass, NULL, 0, 0, 0, 0, 0, NULL, hMenu, hInstance, NULL);
-
+        if (!window)
+            return 1;
         // Creating a monitoring flow termination event
         ghExitEvent = CreateEvent(NULL, TRUE, FALSE, TEXT("ExitEvent"));
 
@@ -605,7 +643,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         nid.cbSize = sizeof(nid);
         nid.hWnd = window;
         nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_GUID;
-        nid.guidItem = __uuidof(AppIcon);
+        nid.uID = MY_TRAY_ICON_ID;
         nid.dwInfoFlags = NIIF_USER;
         if (!IsEmbeddedOrIoT())
         {
@@ -623,9 +661,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         LoadString(hInstance, IDS_INFO, nid.szInfo, ARRAYSIZE(nid.szInfo));
         // Permanent animation icons
         nid.hIcon = hIconIdle;
-        Shell_NotifyIcon(NIM_ADD, &nid);
+        if (!Shell_NotifyIcon(NIM_ADD, &nid))
+        {
+            ThisWindowsVersionNotSupported(UserLocale_RU);
+            return 1;
+        }
+
         nid.uVersion = NOTIFYICON_VERSION_4;
-        Shell_NotifyIcon(NIM_SETVERSION, &nid);
+        if(!Shell_NotifyIcon(NIM_SETVERSION, &nid))
+        {
+            ThisWindowsVersionNotSupported(UserLocale_RU);
+            return 1;
+        }
 
         if (!UserLocale_RU) // If not Russian, then English
         {
