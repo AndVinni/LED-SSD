@@ -69,26 +69,26 @@ wchar_t LocaleName[LOCALE_NAME_MAX_LENGTH];
 const wchar_t* szwWarning = L"Warning!";
 const wchar_t* szwVnimanie = L"Внимание!";
 UINT const WMAPP_NOTIFYCALLBACK = WM_APP + 1;
-HICON hIconIdle , hIconApp , hIconPause , hIconReadD , hIconRead , hIconReadB ,
-hIconWriteD , hIconWrite , hIconWriteB ,
-hIconRWd , hIconRW , hIconRWb;
+HICON hIconIdle, hIconApp, hIconPause, hIconReadD, hIconRead, hIconReadB,
+hIconWriteD, hIconWrite, hIconWriteB,
+hIconRWd, hIconRW, hIconRWb;
 
 const float MIN_AC_RANGE = -10.f; // gb/sec
 const float MAX_AC_RANGE = 10.f;
 
 NOTIFYICONDATAW nid = { sizeof(nid) };
 HWND   window = NULL;
-HMENU  hMenu , hSubMenu = NULL;
+HMENU  hMenu, hSubMenu = NULL;
 HANDLE monitorThread = NULL;
 HANDLE ghExitEvent = NULL;
 HANDLE hThis = NULL;
 DWORD  dwThreadId = 0;
-typedef enum class APP : short { Check , Unload , Load } Application;
-typedef enum class THREAD : short { Check , Pause , Run } Thread;
+typedef enum class APP : short { Check, Unload, Load } Application;
+typedef enum class THREAD : short { Check, Pause, Run } Thread;
 static Application CtrlAutoLoad(Application);
 static Thread CtrlThread(Thread);
 bool UserLocale_RU;                         // Localization is either Russian or English
-void ShowContextMenu(HWND hwnd , POINT pt);
+void ShowContextMenu(HWND hwnd, POINT pt);
 
 // Структура для хранения информации о версии Windows
 struct WindowsVersionInfo
@@ -101,9 +101,9 @@ struct WindowsVersionInfo
 
 #ifdef _DEBUG
 std::wstring nstr = L"";
-static void logMessage(const std::wstring& message , const std::wstring& par)
+static void logMessage(const std::wstring& message, const std::wstring& par)
 {
-    std::wofstream logFile("LED_SSD.log" , std::ios_base::app); // Open log file in append mode
+    std::wofstream logFile("LED_SSD.log", std::ios_base::app); // Open log file in append mode
     if (logFile.is_open())
     {
         logFile << message << par << std::endl; // Write message to log file
@@ -128,8 +128,8 @@ class IconBright
 
 public:
 
-    IconBright(HICON hIconD , HICON hIconN , HICON hIconB) :
-        rmin(MIN_AC_RANGE) , rmax(MAX_AC_RANGE) , darkRange(MIN_AC_RANGE / 100) , brightRange(MAX_AC_RANGE / 100)
+    IconBright(HICON hIconD, HICON hIconN, HICON hIconB) :
+        rmin(MIN_AC_RANGE), rmax(MAX_AC_RANGE), darkRange(MIN_AC_RANGE / 100), brightRange(MAX_AC_RANGE / 100)
     {
         hID = hIconD;
         hIN = hIconN;
@@ -164,7 +164,7 @@ class Normalizator
     float scaled;
 
     // Removing the DC component
-    inline float remove_dc(float x , float alpha)
+    inline float remove_dc(float x, float alpha)
     {
         float y = x - x_prev + alpha * y_prev;
         x_prev = x;
@@ -173,13 +173,13 @@ class Normalizator
     }
 
 public:
-    Normalizator() : x_prev(0.0f) , y_prev(0.0f) , scaled(0.0f)
+    Normalizator() : x_prev(0.0f), y_prev(0.0f), scaled(0.0f)
     {}
 
     // DC removal
-    inline float Preparation(float value , float alpha)
+    inline float Preparation(float value, float alpha)
     {
-        return scaled = remove_dc((value < 0.0f ? 0.0f : value) , alpha);
+        return scaled = remove_dc((value < 0.0f ? 0.0f : value), alpha);
     }
 
     operator float() { return scaled; }
@@ -188,7 +188,7 @@ public:
 void inline static UpdateTrayIcon(HICON hIcon)
 {
     nid.hIcon = hIcon;
-    Shell_NotifyIcon(NIM_MODIFY , &nid);
+    Shell_NotifyIcon(NIM_MODIFY, &nid);
 }
 
 #ifdef _MSC_VER
@@ -199,32 +199,32 @@ void inline static UpdateTrayIcon(HICON hIcon)
 static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
 {   // Monitoring disk activity via system disk performance counters
 
-    static Normalizator levelR , levelW , levelRW;
-    static IconBright Green(hIconReadD , hIconRead , hIconReadB) ,
-        Red(hIconWriteD , hIconWrite , hIconWriteB) ,
-        Yellow(hIconRWd , hIconRW , hIconRWb);
-    static float vRead = 0.f , vWrite = 0.f;
-    static PDH_HQUERY hQueryR , hQueryW;
-    static PDH_HCOUNTER hCounterRead , hCounterWrite;
-    static PDH_FMT_COUNTERVALUE valueRead , valueWrite;
+    static Normalizator levelR, levelW, levelRW;
+    static IconBright Green(hIconReadD, hIconRead, hIconReadB),
+        Red(hIconWriteD, hIconWrite, hIconWriteB),
+        Yellow(hIconRWd, hIconRW, hIconRWb);
+    static float vRead = 0.f, vWrite = 0.f;
+    static PDH_HQUERY hQueryR, hQueryW;
+    static PDH_HCOUNTER hCounterRead, hCounterWrite;
+    static PDH_FMT_COUNTERVALUE valueRead, valueWrite;
 
-    swprintf_s(readCounterPath , L"%s%s%s" , L"\\PhysicalDisk(" , szwSelectedDisk , L")\\Disk Read Bytes/sec");
-    swprintf_s(writeCounterPath , L"%s%s%s" , L"\\PhysicalDisk(" , szwSelectedDisk , L")\\Disk Write Bytes/sec");
+    swprintf_s(readCounterPath, L"%s%s%s", L"\\PhysicalDisk(", szwSelectedDisk, L")\\Disk Read Bytes/sec");
+    swprintf_s(writeCounterPath, L"%s%s%s", L"\\PhysicalDisk(", szwSelectedDisk, L")\\Disk Write Bytes/sec");
 
-    PdhOpenQuery(NULL , NULL , &hQueryR);
-    PdhOpenQuery(NULL , NULL , &hQueryW);
-    PdhAddEnglishCounter(hQueryR , readCounterPath , NULL , &hCounterRead);
-    PdhAddEnglishCounter(hQueryW , writeCounterPath , NULL , &hCounterWrite);
+    PdhOpenQuery(NULL, NULL, &hQueryR);
+    PdhOpenQuery(NULL, NULL, &hQueryW);
+    PdhAddEnglishCounter(hQueryR, readCounterPath, NULL, &hCounterRead);
+    PdhAddEnglishCounter(hQueryW, writeCounterPath, NULL, &hCounterWrite);
 
     PdhCollectQueryData(hQueryR);
     PdhCollectQueryData(hQueryW);
 
-    while (WaitForSingleObject(ghExitEvent , 0) != WAIT_OBJECT_0)
+    while (WaitForSingleObject(ghExitEvent, 0) != WAIT_OBJECT_0)
     {
         PdhCollectQueryData(hQueryR);
         PdhCollectQueryData(hQueryW);
-        PdhGetFormattedCounterValue(hCounterRead , PDH_FMT_DOUBLE , NULL , &valueRead);
-        PdhGetFormattedCounterValue(hCounterWrite , PDH_FMT_DOUBLE , NULL , &valueWrite);
+        PdhGetFormattedCounterValue(hCounterRead, PDH_FMT_DOUBLE, NULL, &valueRead);
+        PdhGetFormattedCounterValue(hCounterWrite, PDH_FMT_DOUBLE, NULL, &valueWrite);
 
         vRead = (float)(valueRead.doubleValue / 1073741824.0); // gb/sec;
         vWrite = (float)(valueWrite.doubleValue / 1073741824.0);
@@ -232,12 +232,12 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
         if (vRead > 0.f && vWrite > 0.f)                    // Reads and writes
         {
             float meanValueRW = std::abs(vRead) > std::abs(vWrite) ? vRead : vWrite;
-            levelRW.Preparation(meanValueRW , 0.001f);
+            levelRW.Preparation(meanValueRW, 0.001f);
             UpdateTrayIcon(Yellow.IconSelector(levelRW));
         }
         else if (vRead > 0.f)                               // Only reads
         {
-            levelR.Preparation(vRead , 0.001f);
+            levelR.Preparation(vRead, 0.001f);
             UpdateTrayIcon(Green.IconSelector(levelR));
             //#ifdef _DEBUG
             //    #pragma message( "-> A log file will be created!")
@@ -246,7 +246,7 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
         }
         else if (vWrite > 0.f)                              // Only writes
         {
-            levelW.Preparation(vWrite , 0.001f);
+            levelW.Preparation(vWrite, 0.001f);
             UpdateTrayIcon(Red.IconSelector(levelW));
         }
         else                                                // Smokes
@@ -262,11 +262,11 @@ static DWORD WINAPI MonitorDiskActivity(LPVOID lpParam)
 #pragma warning(pop)
 #endif
 
-void ShowContextMenu(HWND hwnd , POINT pt)
+void ShowContextMenu(HWND hwnd, POINT pt)
 {
     if (hMenu)
     {
-        hSubMenu = GetSubMenu(hMenu , 0);
+        hSubMenu = GetSubMenu(hMenu, 0);
         if (hSubMenu)
         {   // Window to the foreground, otherwise the context menu will not disappear
             SetForegroundWindow(hwnd);
@@ -276,7 +276,7 @@ void ShowContextMenu(HWND hwnd , POINT pt)
                 uFlags |= TPM_RIGHTALIGN;
             else
                 uFlags |= TPM_LEFTALIGN;
-            TrackPopupMenuEx(hSubMenu , uFlags , pt.x , pt.y , hwnd , NULL);
+            TrackPopupMenuEx(hSubMenu, uFlags, pt.x, pt.y, hwnd, NULL);
         }
     }
 }
@@ -296,14 +296,14 @@ static Application CtrlAutoLoad(Application mode)
     {
         case Application::Check: // Checking the auto-upload status
         {   // Opening the registry branch
-            lResult = RegOpenKeyEx(hKey , szwSubKey , 0 , KEY_READ , &hKeyDescriptor);
+            lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_READ, &hKeyDescriptor);
             if (lResult == ERROR_SUCCESS)
             {   // There is a registry entry
-                lResult = RegGetValue(hKey , szwSubKey , szWindowClass , RRF_RT_REG_SZ , NULL , szwKeyValue , &size);
+                lResult = RegGetValue(hKey, szwSubKey, szWindowClass, RRF_RT_REG_SZ, NULL, szwKeyValue, &size);
                 if (lResult == ERROR_SUCCESS) // Got the registry value
                 {   // Getting the full path to the file
-                    GetModuleFileName(NULL , szwPath , MAX_PATH);
-                    if (wcscmp(szwKeyValue , szwPath) == 0)
+                    GetModuleFileName(NULL, szwPath, MAX_PATH);
+                    if (wcscmp(szwKeyValue, szwPath) == 0)
                     {   // There is an entry in the registry and it matches the current position of the program
                         state = Application::Load;
                         break;
@@ -315,25 +315,25 @@ static Application CtrlAutoLoad(Application mode)
         }
         break;
         case Application::Unload:   // Deleting Registry startup entry
-            lResult = RegOpenKeyEx(hKey , szwSubKey , 0 , KEY_ALL_ACCESS , &hKeyDescriptor);
-            if (lResult == ERROR_SUCCESS)
-            {
-                RegDeleteKeyValue(hKey , szwSubKey , szWindowClass);
-                RegCloseKey(hKeyDescriptor);
-                state = Application::Unload;
-            }
-            break;
+        lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_ALL_ACCESS, &hKeyDescriptor);
+        if (lResult == ERROR_SUCCESS)
+        {
+            RegDeleteKeyValue(hKey, szwSubKey, szWindowClass);
+            RegCloseKey(hKeyDescriptor);
+            state = Application::Unload;
+        }
+        break;
         case Application::Load: // Creating a registry startup entry
-            lResult = RegOpenKeyEx(hKey , szwSubKey , 0 , KEY_ALL_ACCESS , &hKeyDescriptor);
-            if (lResult == ERROR_SUCCESS)
-            {
-                RegCreateKeyEx(hKey , szwSubKey , 0 , NULL , 0 , KEY_ALL_ACCESS , NULL , &hKeyDescriptor , NULL);
-                GetModuleFileName(NULL , szwPath , MAX_PATH);
-                RegSetValueEx(hKeyDescriptor , szWindowClass , NULL , REG_SZ , (LPBYTE)szwPath , MAX_PATH);
-                RegCloseKey(hKeyDescriptor);
-                state = Application::Load;
-            }
-            break;
+        lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_ALL_ACCESS, &hKeyDescriptor);
+        if (lResult == ERROR_SUCCESS)
+        {
+            RegCreateKeyEx(hKey, szwSubKey, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hKeyDescriptor, NULL);
+            GetModuleFileName(NULL, szwPath, MAX_PATH);
+            RegSetValueEx(hKeyDescriptor, szWindowClass, NULL, REG_SZ, (LPBYTE)szwPath, MAX_PATH);
+            RegCloseKey(hKeyDescriptor);
+            state = Application::Load;
+        }
+        break;
     }
     return state;
 }
@@ -349,59 +349,59 @@ static Thread CtrlThread(Thread mode)
     static DWORD size = sizeof(dwKeyValue);
 
     // Registry branch of the pause parameter
-    swprintf_s(szwSubKey , L"%s%s" , L"Software\\" , szWindowClass);
+    swprintf_s(szwSubKey, L"%s%s", L"Software\\", szWindowClass);
 
     switch (mode)
     {
         case Thread::Check:
         {   // Opening the registry branch
-            lResult = RegOpenKeyEx(hKey , szwSubKey , 0 , KEY_READ , &hKeyDescriptor);
+            lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_READ, &hKeyDescriptor);
             if (lResult == ERROR_SUCCESS)
             {   // There is a registry entry
-                lResult = RegGetValue(hKey , szwSubKey , szPause , RRF_RT_DWORD , NULL , &dwKeyValue , &size);
+                lResult = RegGetValue(hKey, szwSubKey, szPause, RRF_RT_DWORD, NULL, &dwKeyValue, &size);
                 if (lResult == ERROR_SUCCESS) // Got the registry value
                     if (dwKeyValue == 1)
                     {
                         state = Thread::Pause;
-                        break;                  
+                        break;
                     }
                 RegCloseKey(hKeyDescriptor);
             }
-            state = Thread::Run;                
+            state = Thread::Run;
         }
         break;
         case Thread::Pause:
-            lResult = RegCreateKeyEx(hKey , szwSubKey , 0 , NULL , 0 , KEY_ALL_ACCESS , NULL , &hKeyDescriptor , NULL);
+        lResult = RegCreateKeyEx(hKey, szwSubKey, 0, NULL, 0, KEY_ALL_ACCESS, NULL, &hKeyDescriptor, NULL);
+        if (lResult == ERROR_SUCCESS)
+        {
+            lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_ALL_ACCESS, &hKeyDescriptor);
             if (lResult == ERROR_SUCCESS)
             {
-                lResult = RegOpenKeyEx(hKey , szwSubKey , 0 , KEY_ALL_ACCESS , &hKeyDescriptor);
-                if (lResult == ERROR_SUCCESS)
-                {
-                    dwKeyValue = 1;
-                    RegSetValueEx(hKeyDescriptor , szPause , NULL , REG_DWORD , (const BYTE*)&dwKeyValue , size);
-                    RegCloseKey(hKeyDescriptor);
-                    state = Thread::Pause;
-                    break;
-                }
-            }
-            state = Thread::Run;
-            break;
-        case Thread::Run:
-            lResult = RegOpenKeyEx(hKey , szwSubKey , 0 , KEY_ALL_ACCESS , &hKeyDescriptor);
-            if (lResult == ERROR_SUCCESS)
-            {
-                RegDeleteKeyValue(hKey , szwSubKey , szPause);
+                dwKeyValue = 1;
+                RegSetValueEx(hKeyDescriptor, szPause, NULL, REG_DWORD, (const BYTE*)&dwKeyValue, size);
                 RegCloseKey(hKeyDescriptor);
-                state = Thread::Run;
+                state = Thread::Pause;
                 break;
             }
-            state = Thread::Pause;
+        }
+        state = Thread::Run;
+        break;
+        case Thread::Run:
+        lResult = RegOpenKeyEx(hKey, szwSubKey, 0, KEY_ALL_ACCESS, &hKeyDescriptor);
+        if (lResult == ERROR_SUCCESS)
+        {
+            RegDeleteKeyValue(hKey, szwSubKey, szPause);
+            RegCloseKey(hKeyDescriptor);
+            state = Thread::Run;
             break;
+        }
+        state = Thread::Pause;
+        break;
     }
     return state;
 }
 
-static LRESULT CALLBACK WindowProc(HWND hwnd , UINT message , WPARAM wParam , LPARAM lParam)
+static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     static HWND s_hwndFlyout = NULL;
     static BOOL s_fCanShowFlyout = TRUE;
@@ -415,94 +415,94 @@ static LRESULT CALLBACK WindowProc(HWND hwnd , UINT message , WPARAM wParam , LP
             switch (wmId)
             {
                 case IDM_EXIT:
-                    DestroyWindow(hwnd);
-                    break;
+                DestroyWindow(hwnd);
+                break;
 
                 case IDM_PAUSE:
-                    if (CtrlThread(Thread::Check) == Thread::Run)
-                    {
-                        SuspendThread(monitorThread);
-                        CtrlThread(Thread::Pause);
-                        SetPriorityClass(hThis , THREAD_MODE_BACKGROUND_BEGIN);
-                        CheckMenuItem(hMenu , IDM_PAUSE , MF_CHECKED);
-                        lstrcpy(nid.szTip , szTipP);
-                        UpdateTrayIcon(hIconPause);
-                    }
-                    else
-                    {
-                        lstrcpy(nid.szTip , szTip);
-                        ResumeThread(monitorThread);
-                        CtrlThread(Thread::Run);
-                        SetPriorityClass(hThis , THREAD_MODE_BACKGROUND_END);
-                        CheckMenuItem(hMenu , IDM_PAUSE , MF_UNCHECKED);
-                    }
-                    break;
+                if (CtrlThread(Thread::Check) == Thread::Run)
+                {
+                    SuspendThread(monitorThread);
+                    CtrlThread(Thread::Pause);
+                    SetPriorityClass(hThis, THREAD_MODE_BACKGROUND_BEGIN);
+                    CheckMenuItem(hMenu, IDM_PAUSE, MF_CHECKED);
+                    lstrcpy(nid.szTip, szTipP);
+                    UpdateTrayIcon(hIconPause);
+                }
+                else
+                {
+                    lstrcpy(nid.szTip, szTip);
+                    ResumeThread(monitorThread);
+                    CtrlThread(Thread::Run);
+                    SetPriorityClass(hThis, THREAD_MODE_BACKGROUND_END);
+                    CheckMenuItem(hMenu, IDM_PAUSE, MF_UNCHECKED);
+                }
+                break;
 
                 case IDM_AUTOLOAD:
-                    if (CtrlAutoLoad(Application::Check) == Application::Load)
-                    {
-                        CtrlAutoLoad(Application::Unload);
-                        CheckMenuItem(hMenu , IDM_AUTOLOAD , MF_UNCHECKED);
-                    }
-                    else
-                    {
-                        CtrlAutoLoad(Application::Load);
-                        CheckMenuItem(hMenu , IDM_AUTOLOAD , MF_CHECKED);
-                    }
-                    break;
+                if (CtrlAutoLoad(Application::Check) == Application::Load)
+                {
+                    CtrlAutoLoad(Application::Unload);
+                    CheckMenuItem(hMenu, IDM_AUTOLOAD, MF_UNCHECKED);
+                }
+                else
+                {
+                    CtrlAutoLoad(Application::Load);
+                    CheckMenuItem(hMenu, IDM_AUTOLOAD, MF_CHECKED);
+                }
+                break;
 
                 default:
-                    return DefWindowProc(hwnd , message , wParam , lParam);
+                return DefWindowProc(hwnd, message, wParam, lParam);
             }
         }
         break;
 
         case WMAPP_NOTIFYCALLBACK:
-            switch (LOWORD(lParam))
+        switch (LOWORD(lParam))
+        {
+            case NIN_SELECT:
+            case WM_CONTEXTMENU:
             {
-                case NIN_SELECT:
-                case WM_CONTEXTMENU:
-                {
-                    POINT const pt = { LOWORD(wParam), HIWORD(wParam) };
-                    ShowContextMenu(hwnd , pt);
-                }
-                break;
+                POINT const pt = { LOWORD(wParam), HIWORD(wParam) };
+                ShowContextMenu(hwnd, pt);
             }
             break;
+        }
+        break;
 
         case WM_WTSSESSION_CHANGE:
         {
             switch (wParam)
             {
                 case WTS_SESSION_LOCK:
-                    if (CtrlThread(Thread::Check) == Thread::Run)
-                    {
-                        SuspendThread(monitorThread);
-                        SetPriorityClass(hThis , THREAD_MODE_BACKGROUND_BEGIN);
-                    }
-                    break;
+                if (CtrlThread(Thread::Check) == Thread::Run)
+                {
+                    SuspendThread(monitorThread);
+                    SetPriorityClass(hThis, THREAD_MODE_BACKGROUND_BEGIN);
+                }
+                break;
                 case WTS_SESSION_UNLOCK:
-                    if (CtrlThread(Thread::Check) != Thread::Pause)
-                    {
-                        ResumeThread(monitorThread);
-                        SetPriorityClass(hThis , THREAD_MODE_BACKGROUND_END);
-                    }
-                    break;
+                if (CtrlThread(Thread::Check) != Thread::Pause)
+                {
+                    ResumeThread(monitorThread);
+                    SetPriorityClass(hThis, THREAD_MODE_BACKGROUND_END);
+                }
+                break;
             }
         }
         break;
 
         case WM_DESTROY:
-            ResumeThread(monitorThread);
-            SetEvent(ghExitEvent);
-            WaitForSingleObject(monitorThread , INFINITE);
-            CloseHandle(monitorThread);
-            Shell_NotifyIcon(NIM_DELETE , &nid);
-            PostQuitMessage(0);
-            break;
+        ResumeThread(monitorThread);
+        SetEvent(ghExitEvent);
+        WaitForSingleObject(monitorThread, INFINITE);
+        CloseHandle(monitorThread);
+        Shell_NotifyIcon(NIM_DELETE, &nid);
+        PostQuitMessage(0);
+        break;
 
         default:
-            return DefWindowProc(hwnd , message , wParam , lParam);
+        return DefWindowProc(hwnd, message, wParam, lParam);
     }
     return 0;
 }
@@ -522,7 +522,8 @@ static bool IsNISSharedIconCompatible()
 {
     // Check for Embedded/IoT edition
     DWORD dwType = 0;
-    if (SUCCEEDED(GetProductInfo(6, 0, 0, 0, &dwType))) {
+    if (SUCCEEDED(GetProductInfo(6, 0, 0, 0, &dwType)))
+    {
         switch (dwType)
         {
             case PRODUCT_IOTUAP: case PRODUCT_IOTOS: case PRODUCT_IOTEDGEOS:
@@ -537,7 +538,7 @@ static bool IsNISSharedIconCompatible()
             return false;
         }
     }
-        
+
     OSVERSIONINFO osvi;
     osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
 
@@ -549,21 +550,21 @@ static bool IsNISSharedIconCompatible()
     switch (version)
     {
         case WIN_VISTA:
-            return false; // Known issues
+        return false; // Known issues
 
         case WIN_7:
-            // RTM(7600) problematic, SP1(7601 + ) works
-            return osvi.dwBuildNumber >= 7601;
+        // RTM(7600) problematic, SP1(7601 + ) works
+        return osvi.dwBuildNumber >= 7601;
 
         case WIN_8:
         case WIN_8_1:
-            return false; // Periodic problems
+        return false; // Periodic problems
 
         case WIN_10:
-            // Early versions are problematic, Anniversary Update (14393+) is stable
-            return osvi.dwBuildNumber >= 14393;
+        // Early versions are problematic, Anniversary Update (14393+) is stable
+        return osvi.dwBuildNumber >= 14393;
 
-    default:
+        default:
         // Versions earlier than Vista or unknown
         return version < WIN_VISTA;
     }
@@ -572,9 +573,9 @@ static bool IsNISSharedIconCompatible()
 static void ThisWindowsVersionNotSupported(bool ru)
 {
     if (ru)
-        MessageBoxEx(NULL , L"Эта версия Windows не поддерживает расширенные функции области уведомлений панели задач" , szwVnimanie , MB_OK , 0);
+        MessageBoxEx(NULL, L"Эта версия Windows не поддерживает расширенные функции области уведомлений панели задач", szwVnimanie, MB_OK, 0);
     else
-        MessageBoxEx(NULL , L"This version of Windows does not support advanced functions of the Taskbar Notification Area" , szwWarning , MB_OK , 0);
+        MessageBoxEx(NULL, L"This version of Windows does not support advanced functions of the Taskbar Notification Area", szwWarning, MB_OK, 0);
 }
 
 #ifdef _MSC_VER
@@ -582,9 +583,9 @@ static void ThisWindowsVersionNotSupported(bool ru)
 #pragma warning(disable:4100)  // we suppress the C1400 only here
 #endif
 
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance ,
-    _In_opt_ HINSTANCE hPrevInstance ,
-    _In_ LPWSTR    lpCmdLine ,
+int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
+    _In_opt_ HINSTANCE hPrevInstance,
+    _In_ LPWSTR    lpCmdLine,
     _In_ int       nCmdShow)
 {
 
@@ -594,40 +595,40 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance ,
 #endif
 
         // The user's language in the system
-        if (GetUserDefaultLocaleName(LocaleName , LOCALE_NAME_MAX_LENGTH) != 0)
-            UserLocale_RU = wcscmp(LocaleName , L"ru-RU") == 0 ? TRUE : FALSE;
+        if (GetUserDefaultLocaleName(LocaleName, LOCALE_NAME_MAX_LENGTH) != 0)
+            UserLocale_RU = wcscmp(LocaleName, L"ru-RU") == 0 ? TRUE : FALSE;
 
         // Blocking the launch of the second instance of the program
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable:4189)  //"local variable is initialized but not referenced"
 #endif
-        HANDLE mutex = CreateMutexEx(0 , szwMutex , CREATE_MUTEX_INITIAL_OWNER , READ_CONTROL);
+        HANDLE mutex = CreateMutexEx(0, szwMutex, CREATE_MUTEX_INITIAL_OWNER, READ_CONTROL);
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
         if (GetLastError() == ERROR_ALREADY_EXISTS)
         {
             if (UserLocale_RU)
-                MessageBoxEx(NULL , L"Программа уже запущена" , szwVnimanie , MB_OK , 0);
+                MessageBoxEx(NULL, L"Программа уже запущена", szwVnimanie, MB_OK, 0);
             else
-                MessageBoxEx(NULL , L"Application alredy run" , szwWarning , MB_OK , 0);
+                MessageBoxEx(NULL, L"Application alredy run", szwWarning, MB_OK, 0);
             return 1;
         }
 
         // Loading icons from resources
-        hIconApp = LoadIcon(hInstance , MAKEINTRESOURCE(IDI_APP));
-        hIconIdle = LoadIcon(hInstance , MAKEINTRESOURCE(IDI_IDLE));
-        hIconPause = LoadIcon(hInstance , MAKEINTRESOURCE(IDI_PAUSE));
-        hIconReadD = LoadIcon(hInstance , MAKEINTRESOURCE(IDI_READD));
-        hIconRead = LoadIcon(hInstance , MAKEINTRESOURCE(IDI_READ));
-        hIconReadB = LoadIcon(hInstance , MAKEINTRESOURCE(IDI_READB));
-        hIconWriteD = LoadIcon(hInstance , MAKEINTRESOURCE(IDI_WRITED));
-        hIconWrite = LoadIcon(hInstance , MAKEINTRESOURCE(IDI_WRITE));
-        hIconWriteB = LoadIcon(hInstance , MAKEINTRESOURCE(IDI_WRITEB));
-        hIconRWd = LoadIcon(hInstance , MAKEINTRESOURCE(IDI_RWD));
-        hIconRW = LoadIcon(hInstance , MAKEINTRESOURCE(IDI_RW));
-        hIconRWb = LoadIcon(hInstance , MAKEINTRESOURCE(IDI_RWB));
+        hIconApp = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APP));
+        hIconIdle = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_IDLE));
+        hIconPause = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_PAUSE));
+        hIconReadD = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_READD));
+        hIconRead = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_READ));
+        hIconReadB = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_READB));
+        hIconWriteD = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WRITED));
+        hIconWrite = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WRITE));
+        hIconWriteB = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WRITEB));
+        hIconRWd = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RWD));
+        hIconRW = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RW));
+        hIconRWb = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RWB));
 
         // Window class registration
         WNDCLASSEXW wcex = { sizeof(wcex) };
@@ -636,24 +637,24 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance ,
         wcex.lpfnWndProc = WindowProc;
         wcex.hInstance = hInstance;
         wcex.hIcon = hIconApp;
-        wcex.hCursor = LoadCursor(NULL , IDC_ARROW);
+        wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
         wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
         wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_CONTEXTMENU);
         wcex.lpszClassName = szWindowClass;
         RegisterClassEx(&wcex);
 
         // Loading the menu from resources
-        hMenu = LoadMenu(hInstance , MAKEINTRESOURCE(IDC_CONTEXTMENU));
+        hMenu = LoadMenu(hInstance, MAKEINTRESOURCE(IDC_CONTEXTMENU));
 
         // Creating the main window
-        window = CreateWindowEx(WS_EX_APPWINDOW , szWindowClass , NULL , 0 , 0 , 0 , 0 , 0 , NULL , hMenu , hInstance , NULL);
+        window = CreateWindowEx(WS_EX_APPWINDOW, szWindowClass, NULL, 0, 0, 0, 0, 0, NULL, hMenu, hInstance, NULL);
         if (!window)
             return 1;
         // Creating a monitoring flow termination event
-        ghExitEvent = CreateEvent(NULL , TRUE , FALSE , TEXT("ExitEvent"));
+        ghExitEvent = CreateEvent(NULL, TRUE, FALSE, TEXT("ExitEvent"));
 
         // Register a window to receive session messages
-        WTSRegisterSessionNotification(window , NOTIFY_FOR_THIS_SESSION);
+        WTSRegisterSessionNotification(window, NOTIFY_FOR_THIS_SESSION);
 
         // Creating a notification context
         nid.cbSize = sizeof(nid);
@@ -664,11 +665,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance ,
         nid.hBalloonIcon = hIconApp;
         nid.uCallbackMessage = WMAPP_NOTIFYCALLBACK;
         // Notification texts
-        LoadString(hInstance , IDS_ACT , szTip , ARRAYSIZE(szTip));
-        LoadString(hInstance , IDS_ACTP , szTipP , ARRAYSIZE(szTipP));
-        lstrcpy(nid.szTip , szTip);
-        LoadString(hInstance , IDS_ACT , nid.szInfoTitle , ARRAYSIZE(nid.szInfoTitle));
-        LoadString(hInstance , IDS_INFO , nid.szInfo , ARRAYSIZE(nid.szInfo));
+        LoadString(hInstance, IDS_ACT, szTip, ARRAYSIZE(szTip));
+        LoadString(hInstance, IDS_ACTP, szTipP, ARRAYSIZE(szTipP));
+        lstrcpy(nid.szTip, szTip);
+        LoadString(hInstance, IDS_ACT, nid.szInfoTitle, ARRAYSIZE(nid.szInfoTitle));
+        LoadString(hInstance, IDS_INFO, nid.szInfo, ARRAYSIZE(nid.szInfo));
         // Permanent animation icons
         nid.hIcon = hIconIdle;
         if (IsNISSharedIconCompatible())
@@ -677,14 +678,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance ,
             nid.dwState |= NIS_SHAREDICON;
             nid.dwStateMask |= NIS_SHAREDICON;
         }
-        if (!Shell_NotifyIcon(NIM_ADD , &nid))
+        if (!Shell_NotifyIcon(NIM_ADD, &nid))
         {
             ThisWindowsVersionNotSupported(UserLocale_RU);
             return 1;
         }
 
         nid.uVersion = NOTIFYICON_VERSION_4;
-        if (!Shell_NotifyIcon(NIM_SETVERSION , &nid))
+        if (!Shell_NotifyIcon(NIM_SETVERSION, &nid))
         {
             ThisWindowsVersionNotSupported(UserLocale_RU);
             return 1;
@@ -692,29 +693,29 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance ,
 
         if (!UserLocale_RU) // If not Russian, then English
         {
-            wchar_t szAutoloadMenu[85] , szPauseMenu[85] , szExitMenu[85];
-            LoadString(hInstance , IDS_AUTOLOAD , szAutoloadMenu , ARRAYSIZE(szAutoloadMenu));
-            LoadString(hInstance , IDS_PAUSE , szPauseMenu , ARRAYSIZE(szPauseMenu));
-            LoadString(hInstance , IDS_EXIT , szExitMenu , ARRAYSIZE(szExitMenu));
-            LoadString(hInstance , IDS_ACTE , szTip , ARRAYSIZE(szTip));
-            LoadString(hInstance , IDS_ACTEP , szTipP , ARRAYSIZE(szTipP));
-            LoadString(hInstance , IDS_INFOE , nid.szInfo , ARRAYSIZE(nid.szInfo));
-            LoadString(hInstance , IDS_APP_DECR_E , nid.szInfoTitle , ARRAYSIZE(nid.szInfoTitle));
-            ModifyMenu(hMenu , IDM_AUTOLOAD , MF_STRING | MF_ENABLED , IDM_AUTOLOAD , szAutoloadMenu);
-            ModifyMenu(hMenu , IDM_PAUSE , MF_STRING | MF_ENABLED , IDM_PAUSE , szPauseMenu);
-            ModifyMenu(hMenu , IDM_EXIT , MF_STRING | MF_ENABLED , IDM_EXIT , szExitMenu);
-            Shell_NotifyIcon(NIM_MODIFY , &nid);
+            wchar_t szAutoloadMenu[85], szPauseMenu[85], szExitMenu[85];
+            LoadString(hInstance, IDS_AUTOLOAD, szAutoloadMenu, ARRAYSIZE(szAutoloadMenu));
+            LoadString(hInstance, IDS_PAUSE, szPauseMenu, ARRAYSIZE(szPauseMenu));
+            LoadString(hInstance, IDS_EXIT, szExitMenu, ARRAYSIZE(szExitMenu));
+            LoadString(hInstance, IDS_ACTE, szTip, ARRAYSIZE(szTip));
+            LoadString(hInstance, IDS_ACTEP, szTipP, ARRAYSIZE(szTipP));
+            LoadString(hInstance, IDS_INFOE, nid.szInfo, ARRAYSIZE(nid.szInfo));
+            LoadString(hInstance, IDS_APP_DECR_E, nid.szInfoTitle, ARRAYSIZE(nid.szInfoTitle));
+            ModifyMenu(hMenu, IDM_AUTOLOAD, MF_STRING | MF_ENABLED, IDM_AUTOLOAD, szAutoloadMenu);
+            ModifyMenu(hMenu, IDM_PAUSE, MF_STRING | MF_ENABLED, IDM_PAUSE, szPauseMenu);
+            ModifyMenu(hMenu, IDM_EXIT, MF_STRING | MF_ENABLED, IDM_EXIT, szExitMenu);
+            Shell_NotifyIcon(NIM_MODIFY, &nid);
         }
 
         // Creating a monitoring flow
-        if ((monitorThread = CreateThread(NULL , 65536 , MonitorDiskActivity , NULL , 0 , &dwThreadId)))
-            SetPriorityClass(monitorThread , THREAD_PRIORITY_ABOVE_NORMAL);
+        if ((monitorThread = CreateThread(NULL, 65536, MonitorDiskActivity, NULL, 0, &dwThreadId)))
+            SetPriorityClass(monitorThread, THREAD_PRIORITY_ABOVE_NORMAL);
 
         // Checking the auto-upload status
         if (CtrlAutoLoad(Application::Check) == Application::Load)
-            CheckMenuItem(hMenu , IDM_AUTOLOAD , MF_CHECKED);
+            CheckMenuItem(hMenu, IDM_AUTOLOAD, MF_CHECKED);
         else
-            CheckMenuItem(hMenu , IDM_AUTOLOAD , MF_UNCHECKED);
+            CheckMenuItem(hMenu, IDM_AUTOLOAD, MF_UNCHECKED);
 
         // Checking the pause status
         if (CtrlThread(Thread::Check) == Thread::Pause)
@@ -722,22 +723,22 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance ,
             if (monitorThread)
             {
                 SuspendThread(monitorThread);
-                CheckMenuItem(hMenu , IDM_PAUSE , MF_CHECKED);
-                lstrcpy(nid.szTip , szTipP);
+                CheckMenuItem(hMenu, IDM_PAUSE, MF_CHECKED);
+                lstrcpy(nid.szTip, szTipP);
                 UpdateTrayIcon(hIconPause);
 
             }
         }
         else
         {
-            lstrcpy(nid.szTip , szTip);
-            CheckMenuItem(hMenu , IDM_PAUSE , MF_UNCHECKED);
+            lstrcpy(nid.szTip, szTip);
+            CheckMenuItem(hMenu, IDM_PAUSE, MF_UNCHECKED);
         }
 
         if (window)
         {   // Main message loop:
             MSG msg;
-            while (GetMessage(&msg , 0 , 0 , 0))
+            while (GetMessage(&msg, 0, 0, 0))
             {
                 TranslateMessage(&msg);
                 DispatchMessage(&msg);
@@ -750,7 +751,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance ,
     }
     catch (...)
     {
-        MessageBoxEx(NULL , L"Something went wrong..." , L"Houston, we have a problem!" , MB_OK , 0);
+        MessageBoxEx(NULL, L"Something went wrong...", L"Houston, we have a problem!", MB_OK, 0);
         return 1;
     }
 #endif
