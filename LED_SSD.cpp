@@ -1,4 +1,4 @@
-﻿// A utility for indicating the reading and writing of the Windows disk subsystem.
+﻿// A utility for indicating of the activity of the Windows disk subsystem.
 // Replacing the hardware LED, for rapid evaluation of disk loading.
 // The indicator is located on the taskbar.
 // Green - reading, yellow - reading and writing, red - writing.
@@ -100,7 +100,9 @@ struct WindowsVersionInfo
 };
 
 #ifdef _DEBUG
+
 std::wstring nstr = L"";
+
 static void logMessage(const std::wstring& message, const std::wstring& par)
 {
     std::wofstream logFile("LED_SSD.log", std::ios_base::app); // Open log file in append mode
@@ -751,7 +753,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     }
     catch (...)
     {
-        MessageBoxEx(NULL, L"Something went wrong...", L"Houston, we have a problem!", MB_OK, 0);
+        MessageBoxEx(NULL, L"Something went wrong...", L"We have a problem!", MB_OK, 0);
         return 1;
     }
 #endif
@@ -762,4 +764,34 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 #pragma warning(pop)
 #endif
 
+/*  The Icon
+
+                  █████                 
+               ███████████              
+             ██████   ██████            
+            ████         ████           
+           ████           ████          
+           ███             ███          
+           ███             ███          
+          ████             ███          
+          ████  ██  █████  ███          
+          ████  ███   ███  ███          
+          ████  ██    ███  ███          
+        ██████  ██    ███  █████        
+        ████████████████████████        
+        ███                  ███        
+        ███                  ███        
+        ████████████████████████        
+        ████████████████████████        
+                ██     ██               
+                ██     ██               
+               ████   ████              
+               ████   ████              
+                ██     ██               
+                ██     ██               
+                ██     ██               
+                ██     ██               
+                ██                      
+                ██ 
+    */             
 // EOF
