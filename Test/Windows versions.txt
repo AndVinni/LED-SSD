@@ -1,0 +1,23 @@
+W7 SP1
+
+Windows 10 IoT Enterprise LTSC Release
+Version 21H2
+OS Build 19044.6093
+Windows Feature Experience Pack 1000.19062.1000.0
+
+Windows 11 IoT Enterprise LTSC Release
+Version 24H2
+OS Build 26100.4770
+Interoperability Windows Component Interface Pack 1000.26100.197.0
+
+Windows 11 Pro Edition
+Version 24H2
+OS Build 26100.4484
+Interaction Windows Component Interface Pack 1000.26100.128.0
+
+
+
+
+
+
+

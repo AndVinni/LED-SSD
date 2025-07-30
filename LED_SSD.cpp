@@ -524,6 +524,7 @@ static bool IsNISSharedIconCompatible()
 {
     // Check for Embedded/IoT edition
     DWORD dwType = 0;
+
     if (SUCCEEDED(GetProductInfo(6, 0, 0, 0, &dwType)))
     {
         switch (dwType)
@@ -552,15 +553,14 @@ static bool IsNISSharedIconCompatible()
     switch (version)
     {
         case WIN_VISTA:
-        return false; // Known issues
-
         case WIN_7:
-        // RTM(7600) problematic, SP1(7601 + ) works
-        return osvi.dwBuildNumber >= 7601;
+        return false;
 
         case WIN_8:
         case WIN_8_1:
-        return false; // Periodic problems
+        // Windows 8.x has support for NIS_SHAREDICON, despite occasional issues
+        // Disabling this feature will cause more serious compatibility issues
+        return true;
 
         case WIN_10:
         // Early versions are problematic, Anniversary Update (14393+) is stable
@@ -685,12 +685,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             ThisWindowsVersionNotSupported(UserLocale_RU);
             return 1;
         }
-
+        // Попытка установить NOTIFYICON_VERSION_4
         nid.uVersion = NOTIFYICON_VERSION_4;
         if (!Shell_NotifyIcon(NIM_SETVERSION, &nid))
         {
-            ThisWindowsVersionNotSupported(UserLocale_RU);
-            return 1;
+            #ifdef _DEBUG
+            if (UserLocale_RU)
+                ThisWindowsVersionNotSupported(UserLocale_RU)
+            #endif
+
+            // CRITICAL CHANGE: Remove icon and re-add with base version
+            Shell_NotifyIcon(NIM_DELETE, &nid);
+            nid.uVersion = 0; // Basic version
+            if (!Shell_NotifyIcon(NIM_ADD, &nid))
+            {
+                ThisWindowsVersionNotSupported(UserLocale_RU);
+                return 1;
+            }
         }
 
         if (!UserLocale_RU) // If not Russian, then English
@@ -728,7 +739,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                 CheckMenuItem(hMenu, IDM_PAUSE, MF_CHECKED);
                 lstrcpy(nid.szTip, szTipP);
                 UpdateTrayIcon(hIconPause);
-
             }
         }
         else

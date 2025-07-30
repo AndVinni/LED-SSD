@@ -1,6 +1,0 @@
-Windows 10 IoT Enterprise LTSC Release
-Version 21H2
-OS Build 19044.6093
-Windows Feature Experience Pack 1000.19062.1000.0
-
-
